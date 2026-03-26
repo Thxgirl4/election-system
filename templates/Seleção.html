@@ -9,12 +9,12 @@
 
   <div class="container">
     <h2>Escolha o tipo</h2>
-    <button class="btn-enviar" onclick="ir('candidatos.html')">Candidatos</button>
-    <button class="btn-enviar" onclick="ir('eleitores.html')">Eleitores</button>
+    <button class="btn-enviar" onclick="ir('/candidato')">Candidatos</button>
+    <button class="btn-enviar" onclick="ir('/eleitor')">Eleitores</button>
   </div>
 
   <script>
-    function ir(pagina) { window.location.href = pagina; }
+    function ir(rota) { window.location.href = rota; }
   </script>
 
 </body>

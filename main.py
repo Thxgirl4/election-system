@@ -1,8 +1,8 @@
 from flask import Flask, request, render_template
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 import os
 from dotenv import load_dotenv
-from  werkzeug.utils import secure_filename
+from werkzeug.utils import secure_filename
 
 load_dotenv()
 
@@ -38,19 +38,49 @@ def upload_file():
             file.save(file_path)
 """
 
-@app.route('/eleitor', methods=['GET'])
+@app.route('/eleitor', methods=['GET', 'POST'])
 def eleitor():
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            return 'No file uploaded', 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return 'No file selected', 400
+        
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join('election-system', filename))
+            return 'File uploaded successfully', 200
+    
     with engine.connect() as connection:
-        result = connection.execute("SELECT * FROM eleitor")
+        result = connection.execute(text("SELECT * FROM eleitor"))
         eleitores = result.fetchall()
     return render_template('eleitores.html', eleitores=eleitores)
 
-@app.route('/candidato', methods=['GET'])
-def eleitor():
+@app.route('/candidato', methods=['GET', 'POST'])
+def candidato():
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            return 'No file uploaded', 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return 'No file selected', 400
+        
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join('election-system', filename))
+            return 'File uploaded successfully', 200
+    
     with engine.connect() as connection:
-        result = connection.execute("SELECT * FROM eleitor")
+        result = connection.execute(text("SELECT * FROM candidato"))
         candidatos = result.fetchall()
     return render_template('candidatos.html', candidatos=candidatos)
+
+@app.route('/votacao', methods=['GET'])
+def votacao():
+    return render_template('votacao.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
