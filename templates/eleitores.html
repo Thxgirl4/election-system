@@ -9,17 +9,18 @@
 
   <div class="container">
     <h2>Importar Eleitores</h2>
-    <input type="file">
-    <button class="btn-enviar">Enviar</button>
+    <form method="POST" enctype="multipart/form-data">
+      <input type="file" name="file" required accept=".csv">
+      <button type="submit" class="btn-enviar">Enviar</button>
+    </form>
     <br><br>
-    <button class="btn-votar" onclick="irParaVotacao()">Iniciar Votação</button>
+    <button class="btn-votar" onclick="ir('/votacao')">Iniciar Votação</button>
   </div>
 
-  <button class="btn-navegacao" onclick="ir('candidatos.html')">Ir para Candidatos</button>
+  <button class="btn-navegacao" onclick="ir('/candidato')">Ir para Candidatos</button>
 
   <script>
-    function ir(pagina) { window.location.href = pagina; }
-    function irParaVotacao() { window.location.href = "votacao.html"; }
+    function ir(rota) { window.location.href = rota; }
   </script>
 
 </body>
