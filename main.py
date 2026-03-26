@@ -7,6 +7,8 @@ from werkzeug.utils import secure_filename
 load_dotenv()
 
 app = Flask(__name__)
+UPLOAD_FOLDER = 'tmp'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 #engine = create_engine('postgresql+psycopg2://user_database:user_pass@localhost/dbname')
 
@@ -50,7 +52,7 @@ def eleitor():
         
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            file.save(os.path.join('election-system', filename))
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             return 'File uploaded successfully', 200
     
     with engine.connect() as connection:
@@ -70,7 +72,7 @@ def candidato():
         
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            file.save(os.path.join('election-system', filename))
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             return 'File uploaded successfully', 200
     
     with engine.connect() as connection:
