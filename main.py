@@ -38,6 +38,19 @@ def upload_file():
             file.save(file_path)
 """
 
+@app.route('/eleitor', methods=['GET'])
+def eleitor():
+    with engine.connect() as connection:
+        result = connection.execute("SELECT * FROM eleitor")
+        eleitores = result.fetchall()
+    return render_template('eleitores.html', eleitores=eleitores)
+
+@app.route('/candidato', methods=['GET'])
+def eleitor():
+    with engine.connect() as connection:
+        result = connection.execute("SELECT * FROM eleitor")
+        candidatos = result.fetchall()
+    return render_template('candidatos.html', candidatos=candidatos)
 
 if __name__ == '__main__':
     app.run(debug=True)
