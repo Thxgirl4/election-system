@@ -74,8 +74,9 @@ def candidato():
             return 'File uploaded successfully', 200
     
     with engine.connect() as connection:
-        result = connection.execute(text("SELECT * FROM candidato"))
+        result = connection.execute(text("SELECT candidato.idcandidato, candidato.nomecandidato, candidato.numpartido, candidato.idcargo, cargo.nomecargo, partido.nomepartido FROM candidato JOIN cargo ON candidato.idcargo = cargo.idcargo JOIN partido ON candidato.numpartido = partido.numpartido"))
         candidatos = result.fetchall()
+        print(candidatos)
     return render_template('candidatos.html', candidatos=candidatos)
 
 @app.route('/votacao', methods=['GET'])
