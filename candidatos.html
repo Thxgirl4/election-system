@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Candidatos</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container">
+    <h2>Importar Candidatos</h2>
+    <input type="file">
+    <button class="btn-enviar">Enviar</button>
+    <br><br>
+    <button class="btn-votar" onclick="irParaVotacao()">Iniciar Votação</button>
+  </div>
+
+  <button class="btn-navegacao" onclick="ir('eleitores.html')">Ir para Eleitores</button>
+
+  <script>
+    function ir(pagina) { window.location.href = pagina; }
+    function irParaVotacao() { window.location.href = "votacao.html"; }
+  </script>
+
+</body>
+</html>
