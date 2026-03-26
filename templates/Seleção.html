@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Início</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
 <body>
 
@@ -11,6 +11,7 @@
     <h2>Escolha o tipo</h2>
     <button class="btn-enviar" onclick="ir('/candidato')">Candidatos</button>
     <button class="btn-enviar" onclick="ir('/eleitor')">Eleitores</button>
+    <button class="btn-votar" onclick="ir('/votacao')">Iniciar Votação</button>
   </div>
 
   <script>

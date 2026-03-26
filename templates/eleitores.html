@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Eleitores</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet"  href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
 <body>
 
@@ -14,10 +14,30 @@
       <button type="submit" class="btn-enviar">Enviar</button>
     </form>
     <br><br>
-    <button class="btn-votar" onclick="ir('/votacao')">Iniciar Votação</button>
   </div>
 
-  <button class="btn-navegacao" onclick="ir('/candidato')">Ir para Candidatos</button>
+  <div class="container">
+    <h2>Lista de Eleitores</h2>
+    <table>
+      <tr>
+        <th>Nome</th>
+        <th>Titulo</th>
+        <th>Zona</th>
+        <th>Secao</th>
+      </tr>
+      {% for eleitor in eleitores %}
+      <tr>
+        <td>{{ eleitor.nome }}</td>
+        <td>{{ eleitor.titulo }}</td>
+        <td>{{ eleitor.zona }}</td>
+        <td>{{ eleitor.secao }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+
+  </div>
+  
+  <button class="btn-navegacao" onclick="ir('/')">Inicio / Seção</button>
 
   <script>
     function ir(rota) { window.location.href = rota; }
