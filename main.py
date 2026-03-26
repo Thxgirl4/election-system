@@ -33,7 +33,8 @@ def upload_file():
 
             file.save(file_path)
 
-
+if __name__ == '__main__':
+    app.run(debug=True)
 
 
 
