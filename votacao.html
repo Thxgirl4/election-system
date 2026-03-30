@@ -3,14 +3,68 @@
 <head>
   <meta charset="UTF-8">
   <title>Votação</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="styleUrna.css">
 </head>
 <body>
 
-  <div class="container">
-    <h2>Votação iniciada</h2>
-    <p>Aqui vai ficar a urna eletrônica 👀</p>
+  <div id="conteudo">
+    <div id="tela">
+        <div id="painel">
+            <p>SEU VOTO PARA:</p>
+            <h2 id="cargo">CANDIDATO</h2>
+            <div style="display:flex; gap:10px;">
+                <div id="box1" style="width:40px; height:50px; border:1px solid #000; font-size:30px; text-align:center; line-height:50px;"></div>
+                <div id="box2" style="width:40px; height:50px; border:1px solid #000; font-size:30px; text-align:center; line-height:50px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="topo"></div>
+    <div id="faixaDir"></div>
+    <div id="ladoEsqTec"></div>
+    <div id="ladoDirTec"></div>
+    
+    <div id="n_1" onclick="clique('1')"></div>
+    <div id="n_2" onclick="clique('2')"></div>
+    <div id="n_3" onclick="clique('3')"></div>
+    <div id="n_4" onclick="clique('4')"></div>
+    <div id="n_5" onclick="clique('5')"></div>
+    <div id="n_6" onclick="clique('6')"></div>
+    <div id="n_7" onclick="clique('7')"></div>
+    <div id="n_8" onclick="clique('8')"></div>
+    <div id="n_9" onclick="clique('9')"></div>
+    <div id="ptabaixo7"></div>
+    <div id="n_0" onclick="clique('0')"></div>
+    <div id="ptabaixo9"></div>
+
+    <div id="branco" onclick="alert('Voto em Branco')"></div>
+    <div id="corrige" onclick="limpar()"></div>
+    <div id="confirma" onclick="confirmar()"></div>
+
+    <div id="abaixoTec"></div>
   </div>
+
+  <button class="btn-navegacao" onclick="window.location.href='Seleção.html'">Sair da Urna</button>
+
+  <script>
+    let voto = "";
+    function clique(n) {
+        if(voto.length < 2) {
+            voto += n;
+            document.getElementById('box1').innerText = voto[0] || "";
+            document.getElementById('box2').innerText = voto[1] || "";
+        }
+    }
+    function limpar() {
+        voto = "";
+        document.getElementById('box1').innerText = "";
+        document.getElementById('box2').innerText = "";
+    }
+    function confirmar() {
+        if(voto.length === 2) alert("Voto Confirmado!");
+        else alert("Digite o número do candidato!");
+    }
+  </script>
 
 </body>
 </html>
