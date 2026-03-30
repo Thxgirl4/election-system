@@ -20,15 +20,17 @@
     <h2>Lista de Candidatos</h2>
     <table>
       <tr>
+        <th>Número</th>
         <th>Nome</th>
         <th>Partido</th>
         <th>Cargo</th>
       </tr>
       {% for candidato in candidatos %}
       <tr>
-        <td>{{ candidato.nomecandidato }}</td>
-        <td>{{ candidato.nomepartido }}</td>
-        <td>{{ candidato.nomecargo }}</td>
+        <td>{{ candidato.id_candidato }}</td>
+        <td>{{ candidato.nome_candidato }}</td>
+        <td>{{ candidato.id_partido }}</td>
+        <td>{{ candidato.id_cargo }}</td>
       </tr>
       {% endfor %}
     </table>
