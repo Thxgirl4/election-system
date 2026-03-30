@@ -9,6 +9,8 @@ from flask import jsonify, request
 load_dotenv()
 
 app = Flask(__name__)
+UPLOAD_FOLDER = 'tmp'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 
 engine = create_engine(
@@ -56,6 +58,9 @@ def eleitor():
 
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            return 'File uploaded successfully', 200
+    
             file.save(os.path.join("election-system", filename))
             return "File uploaded successfully", 200
 
@@ -77,6 +82,9 @@ def candidato():
 
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            return 'File uploaded successfully', 200
+    
             file.save(os.path.join("/tmp", filename))
             return "File uploaded successfully", 200
 
