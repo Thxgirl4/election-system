@@ -1,6 +1,5 @@
-/* Configuração da página */
 body {
-    background-color: #f0f0f0; /* Fundo cinza claro */
+    background-color: #f0f0f0;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     display: flex;
     flex-direction: column;
@@ -9,7 +8,6 @@ body {
     margin: 0;
 }
 
-/* O Quadrado Branco Centralizado */
 .container {
     background-color: #ffffff;
     padding: 40px;
@@ -26,14 +24,12 @@ h2 {
     color: #333;
 }
 
-/* Estilo dos Inputs */
 input[type="file"] {
     margin-bottom: 20px;
     display: block;
     width: 100%;
 }
 
-/* Botões Gerais */
 button {
     padding: 12px 20px;
     border: none;
@@ -47,7 +43,6 @@ button:hover {
     opacity: 0.8;
 }
 
-/* Estilo da tabela */
 table {
     width: 100%;
     border-collapse: collapse;
@@ -71,7 +66,6 @@ table th {
     color: #000;
 }
 
-/* Botão Iniciar Votação (Verde) */
 .btn-votar {
     background-color: #28a745;
     color: white;
@@ -79,12 +73,11 @@ table th {
     margin-top: 15px;
 }
 
-/* Botão de Navegação (Canto Inferior Esquerdo) */
 .btn-navegacao {
     position: fixed;
     bottom: 20px;
     left: 20px;
-    background-color: #e0e0e0; /* Cor padrão */
+    background-color: #e0e0e0;
     color: #333;
     border: 1px solid #ccc;
 }
