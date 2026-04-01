@@ -71,6 +71,10 @@ CREATE TABLE IF NOT EXISTS urna_candidato (
 );
 
 
+ALTER TABLE voto ADD COLUMN id_candidato INT NULL;
+ALTER TABLE voto ADD COLUMN tipo_voto VARCHAR(10) DEFAULT 'VALIDO'; -- 'VALIDO', 'BRANCO', 'NULO'
+ALTER TABLE voto ADD CONSTRAINT fk_voto_candidato FOREIGN KEY (id_candidato) REFERENCES candidato(id_candidato);
+
 
 -- 1. Inserindo Cargos
 INSERT INTO cargo (id_cargo, num_digitos, nome_cargo) VALUES 

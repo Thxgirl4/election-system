@@ -1,0 +1,170 @@
+/* FUNDO */
+body {
+    background-color: #dcdcdc;
+    font-family: Arial, sans-serif;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+}
+
+/* CONTAINER */
+.container {
+    margin-top: 30px;
+    text-align: center;
+}
+
+/* URNA */
+.urna {
+    display: flex;
+    background-color: #d6d1c4;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+    gap: 20px;
+}
+
+/* TELA */
+.tela {
+    background-color: #efefef;
+    width: 450px;
+    height: 280px;
+    border: 2px solid #999;
+    padding: 20px;
+    position: relative;
+}
+
+/* INPUT */
+.campo-voto input {
+    width: 250px;
+    padding: 5px;
+    margin-top: 10px;
+}
+
+/* DISPLAY */
+.numero-display {
+    margin-top: 20px;
+    font-size: 26px;
+    letter-spacing: 8px;
+}
+
+.numero-display span {
+    border: 1px solid #000;
+    padding: 8px;
+    margin-right: 5px;
+    display: inline-block;
+    width: 20px;
+    text-align: center;
+}
+
+/* INFO */
+#nome-candidato {
+    margin-top: 15px;
+}
+
+/* TECLADO */
+.teclado {
+    background-color: #3b3b3b;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+/* TÍTULO */
+.teclado::before {
+    content: "JUSTIÇA ELEITORAL";
+    display: block;
+    color: #ddd;
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-align: center;
+    font-size: 13px;
+}
+
+/* LINHAS */
+.linha {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+/* BOTÕES NUMÉRICOS */
+.teclado button {
+    width: 60px;
+    height: 50px;
+    background-color: #1e1e1e;
+    color: #fff;
+    /* font-size: 16px; */
+    border: 1px solid #000;
+    border-radius: 5px;
+    box-shadow: inset -2px -2px 5px rgba(255, 255, 255, 0.1),
+        inset 2px 2px 5px rgba(0, 0, 0, 0.8);
+    cursor: pointer;
+}
+
+.teclado button:active {
+    transform: scale(0.95);
+}
+
+.linha button {
+    font-size:16px;}
+
+/* AÇÕES */
+.acoes {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    align-items: flex-end;
+    font-size: 5px;
+}
+
+/* BOTÕES DE AÇÃO (AJUSTADOS) */
+.btn-branco,
+.btn-corrige,
+.btn-confirma {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 5px;
+    font-weight: bold;
+    border-radius: 4px;
+}
+
+/* BRANCO */
+.btn-branco {
+    background-color: #fff;
+    color: #000;
+    width: 80px;
+    height: 45px;
+    font-size:10px;
+}
+
+/* CORRIGE */
+.btn-corrige {
+    background-color: #f39c12;
+    color: #000;
+    width: 80px;
+    height: 45px;
+    font-size: 10px;
+}
+
+/* CONFIRMA */
+.btn-confirma {
+    background-color: #27ae60;
+    color: #fff;
+    width: 90px;
+    height: 55px;
+    font-size: 10px;
+}
+
+/* BOTÃO VOLTAR */
+.btn-navegacao {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background-color: #d1d1d1;
+    border: 1px solid #999;
+    padding: 10px 15px;
+    cursor: pointer;
+}
