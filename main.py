@@ -14,7 +14,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 
 engine = create_engine(
-    f"postgresql+psycopg2://{os.getenv("UserBd")}:{os.getenv("PasswordBd")}@{os.getenv("HostBd")}/{os.getenv("nomeBd")}"
+    f"postgresql+psycopg2://{os.getenv("DB_USER")}:{os.getenv("DB_PASSWORD")}@{os.getenv("DB_HOST")}/{os.getenv("DB_NAME")}"
 )
 
 
@@ -27,23 +27,6 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in {"csv"}
 
 
-""" @app.route('/eleitor', methods=['GET', 'POST'])
-def upload_file():
-    if request.method == 'POST':
-        if 'file' not in request.files:
-            return 'No file uploaded', 400
-        
-        file = request.files['file']
-        if file.filename == ' ':
-            return 'No file selected', 400
-        
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file_path = os.path.join('/tmp', filename)
-            file.upload(file_path)
-
-            file.save(file_path)
-"""
 
 
 @app.route("/eleitor", methods=["GET", "POST"])
@@ -183,11 +166,12 @@ def buscar_candidato():
         
         id_cargo = cargo_db[0]
 
+        # troquei o c.numero_urna por p.num_partido
         query = text("""
             SELECT c.nome_candidato, p.sigla 
             FROM candidato c
             JOIN partido p ON c.id_partido = p.num_partido
-            WHERE c.numero_urna = :numero AND c.id_cargo = :id_cargo
+            WHERE p.num_partido = :numero AND c.id_cargo = :id_cargo
         """)
         
         candidato_db = connection.execute(query, {"numero": numero, "id_cargo": id_cargo}).fetchone()
@@ -201,9 +185,18 @@ def buscar_candidato():
             return jsonify({"nome": "VOTO NULO"}), 404
 
 
-@app.route("/votacao", methods=["GET"])
+# zera a tabela de votos para cada nova votação
+# falta implementar o relatorio de votos zerados
+@app.route("/votacao", methods=["GET", "POST"])
 def votacao():
-    return render_template("votacao.html")
+    if request.method == "GET":
+        id_urna_atual = 1 # mudar logica para pegar o id da urna dinamicamente
+        
+        with engine.connect() as connection:
+            connection.execute(text("DELETE FROM voto WHERE id_urna = :id_urna"), {"id_urna": id_urna_atual})
+            connection.commit()
+    
+        return render_template("votacao.html")
 
 
 if __name__ == "__main__":
