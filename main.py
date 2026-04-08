@@ -1,10 +1,14 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, make_response
 from sqlalchemy import create_engine, text
 import os
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
 import uuid
 from flask import jsonify, request
+from io import BytesIO
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from datetime import datetime
 
 load_dotenv()
 
@@ -168,7 +172,7 @@ def buscar_candidato():
 
         # troquei o c.numero_urna por p.num_partido
         query = text("""
-            c.nome_candidato, p.sigla 
+            SELECT c.nome_candidato, p.sigla 
             FROM candidato c
             JOIN partido p ON c.id_partido = p.num_partido
             WHERE p.num_partido = :numero AND c.id_cargo = :id_cargo
@@ -198,6 +202,75 @@ def votacao():
     
         return render_template("votacao.html")
 
+# rota para gerar primeiro relatório
+@app.route("/relatorio", methods=["GET"])
+def relatorio():
+        id_urna_atual = 1 # mudar logica para pegar o id da urna dinamicamente
+        with engine.connect() as connection:    
+            urna_data = connection.execute(
+                text("SELECT id_urna, anomes FROM urna_eleicao WHERE id_urna = :id_urna"),
+                {"id_urna": id_urna_atual}
+            ).fetchone()
+
+            votos_count = connection.execute(
+                text("""
+                    SELECT 
+                        COALESCE(SUM(CASE WHEN tipo_voto = 'VALIDO' THEN 1 ELSE 0 END), 0) as validos,
+                        COALESCE(SUM(CASE WHEN tipo_voto = 'BRANCO' THEN 1 ELSE 0 END), 0) as brancos,
+                        COALESCE(SUM(CASE WHEN tipo_voto = 'NULO' THEN 1 ELSE 0 END), 0) as nulos,
+                        COALESCE(COUNT(*), 0) as total
+                    FROM voto 
+                    WHERE id_urna = :id_urna
+                """),
+                {"id_urna": id_urna_atual}
+            ).fetchone()
+
+            print(urna_data)
+            print(votos_count)
+            
+            # Gera PDF com dados da urna
+            buffer = BytesIO()
+            pdf = canvas.Canvas(buffer, pagesize=A4)
+            width, height = A4
+            
+            pdf.setFont("Helvetica-Bold", 18)
+            pdf.drawCentredString(width / 2, height - 50, "Relatório da Urna - Zerésima")
+            
+            pdf.setFont("Helvetica", 12)
+            pdf.drawString(50, height - 100, f"Data/Hora: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+            pdf.drawString(50, height - 120, f"ID da Urna: {id_urna_atual}")
+            
+            if urna_data:
+                y_pos = height - 160
+                pdf.drawString(50, y_pos, "Dados da Urna:")
+                y_pos -= 20
+                pdf.drawString(70, y_pos, f"ID: {urna_data[0]}")
+                y_pos -= 20
+                pdf.drawString(70, y_pos, f"Ano/Mês: {urna_data[1]}")
+                y_pos -= 30
+                
+                pdf.drawString(50, y_pos, "Contagem de Votos:")
+                y_pos -= 20
+                pdf.drawString(70, y_pos, f"Votos Válidos: {votos_count[0]}")
+                y_pos -= 20
+                pdf.drawString(70, y_pos, f"Votos em Branco: {votos_count[1]}")
+                y_pos -= 20
+                pdf.drawString(70, y_pos, f"Votos Nulos: {votos_count[2]}")
+                y_pos -= 20
+                pdf.drawString(70, y_pos, f"Total de Votos: {votos_count[3]}")
+            else:
+                pdf.drawString(50, height - 160, "Urna não encontrada no sistema.")
+            
+            pdf.drawString(50, height - 320, "Todos os votos desta urna foram zerados.")
+            pdf.drawString(50, height - 340, "A urna está pronta para receber novos votos.")
+            
+            pdf.save()
+            buffer.seek(0)
+            
+            response = make_response(buffer.getvalue())
+            response.headers['Content-Type'] = 'application/pdf'
+            response.headers['Content-Disposition'] = f'inline; filename=zeresima_urna_{id_urna_atual}.pdf'
+            return response
 
 if __name__ == "__main__":
     app.run(debug=True)
