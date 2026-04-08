@@ -168,7 +168,7 @@ def buscar_candidato():
 
         # troquei o c.numero_urna por p.num_partido
         query = text("""
-            SELECT c.nome_candidato, p.sigla 
+            c.nome_candidato, p.sigla 
             FROM candidato c
             JOIN partido p ON c.id_partido = p.num_partido
             WHERE p.num_partido = :numero AND c.id_cargo = :id_cargo
