@@ -1,10 +1,16 @@
 from flask import Flask, request, render_template, jsonify
+from flask import Flask, request, render_template, make_response
 from sqlalchemy import create_engine, text
 import os
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
 import uuid
 from flask_socketio import SocketIO, emit
+from flask import jsonify, request
+from io import BytesIO
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from datetime import datetime
 
 load_dotenv()
 
@@ -18,7 +24,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 ELEICAO_ATUAL = '202610'
 
 engine = create_engine(
-    f"postgresql+psycopg2://{os.getenv('UserBd')}:{os.getenv('PasswordBd')}@{os.getenv('HostBd')}/{os.getenv('nomeBd')}"
+    f"postgresql+psycopg2://{os.getenv("DB_USER")}:{os.getenv("DB_PASSWORD")}@{os.getenv("DB_HOST")}/{os.getenv("DB_NAME")}"
 )
 
 def allowed_file(filename):
@@ -27,6 +33,13 @@ def allowed_file(filename):
 @app.route("/")
 def index():
     return render_template("Seleção.html")
+
+
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in {"csv"}
+
+
+
 
 @app.route("/eleitor", methods=["GET", "POST"])
 def eleitor():
@@ -155,11 +168,12 @@ def buscar_candidato():
         
         id_cargo = cargo_db[0]
 
+        # troquei o c.numero_urna por p.num_partido
         query = text("""
             SELECT c.nome_candidato, p.sigla 
             FROM candidato c
             JOIN partido p ON c.id_partido = p.num_partido
-            WHERE c.numero_urna = :numero AND c.id_cargo = :id_cargo
+            WHERE p.num_partido = :numero AND c.id_cargo = :id_cargo
         """)
         
         candidato_db = connection.execute(query, {"numero": numero, "id_cargo": id_cargo}).fetchone()
@@ -172,9 +186,42 @@ def buscar_candidato():
         else:
             return jsonify({"nome": "VOTO NULO"}), 404
 
-@app.route("/votacao", methods=["GET"])
+
+# zera a tabela de votos para cada nova votação
+# falta implementar o relatorio de votos zerados
+@app.route("/votacao", methods=["GET", "POST"])
 def votacao():
-    return render_template("votacao.html")
+    if request.method == "GET":
+        id_urna_atual = 1 # mudar logica para pegar o id da urna dinamicamente
+        
+        with engine.connect() as connection:
+            connection.execute(text("DELETE FROM voto WHERE id_urna = :id_urna"), {"id_urna": id_urna_atual})
+            connection.commit()
+    
+        return render_template("votacao.html")
+
+# rota para gerar primeiro relatório
+@app.route("/relatorio", methods=["GET"])
+def relatorio():
+        id_urna_atual = 1 # mudar logica para pegar o id da urna dinamicamente
+        with engine.connect() as connection:    
+            urna_data = connection.execute(
+                text("SELECT id_urna, anomes FROM urna_eleicao WHERE id_urna = :id_urna"),
+                {"id_urna": id_urna_atual}
+            ).fetchone()
+
+            votos_count = connection.execute(
+                text("""
+                    SELECT 
+                        COALESCE(SUM(CASE WHEN tipo_voto = 'VALIDO' THEN 1 ELSE 0 END), 0) as validos,
+                        COALESCE(SUM(CASE WHEN tipo_voto = 'BRANCO' THEN 1 ELSE 0 END), 0) as brancos,
+                        COALESCE(SUM(CASE WHEN tipo_voto = 'NULO' THEN 1 ELSE 0 END), 0) as nulos,
+                        COALESCE(COUNT(*), 0) as total
+                    FROM voto 
+                    WHERE id_urna = :id_urna
+                """),
+                {"id_urna": id_urna_atual}
+            ).fetchone()
 
 @app.route("/mesario")
 def mesario():

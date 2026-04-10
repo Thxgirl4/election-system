@@ -15,6 +15,9 @@
       <div class="tela">
         <div id="tela-bloqueio" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #222; color: #fff; display: flex; align-items: center; justify-content: center; z-index: 10; font-size: 20px; font-weight: bold; text-align: center; flex-direction: column;">
           AGUARDANDO<br>LIBERAÇÃO
+        <div class="campo-voto">
+        <!  <label Título do Eleitor:</label 
+          <input type="text" id="titulo_eleitor" maxlength="12" placeholder="0000 0000 0000">
         </div>
 
         <div class="info-candidato" id="tela-votacao">
@@ -50,6 +53,9 @@
         </div>
       </div>
     </div>
+    
+    <button class="btn-navegacao" onclick="ir('/relatorio')">Relatório da urna</button>
+    <button class="btn-navegacao" onclick="ir('/')">Voltar ao Início</button>
   </div>
 
   <script>
