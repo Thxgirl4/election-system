@@ -76,6 +76,18 @@ ALTER TABLE voto ADD COLUMN tipo_voto VARCHAR(10) DEFAULT 'VALIDO'; -- 'VALIDO',
 ALTER TABLE voto ADD CONSTRAINT fk_voto_candidato FOREIGN KEY (id_candidato) REFERENCES candidato(id_candidato);
 
 
+-- adicionado hoje pascoa
+
+CREATE TABLE IF NOT EXISTS comparecimento (
+    id_eleitor INT NOT NULL,
+    anomes VARCHAR(6) NOT NULL,
+    data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_eleitor, anomes),
+    CONSTRAINT fk_comparecimento_eleitor FOREIGN KEY (id_eleitor) REFERENCES eleitor(id_eleitor),
+    CONSTRAINT fk_comparecimento_eleicao FOREIGN KEY (anomes) REFERENCES eleicao(anomes)
+);
+
+
 -- 1. Inserindo Cargos
 INSERT INTO cargo (id_cargo, num_digitos, nome_cargo) VALUES 
 (1, 2, 'Presidente'),

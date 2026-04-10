@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Votação</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/styleurna.css') }}" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 </head>
 <body>
 
@@ -12,19 +13,15 @@
     
     <div class="urna">
       <div class="tela">
-        <div class="campo-voto">
-          <label>Título do Eleitor:</label>
-          <input type="text" id="titulo_eleitor" maxlength="12" placeholder="0000 0000 0000">
+        <div id="tela-bloqueio" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #222; color: #fff; display: flex; align-items: center; justify-content: center; z-index: 10; font-size: 20px; font-weight: bold; text-align: center; flex-direction: column;">
+          AGUARDANDO<br>LIBERAÇÃO
         </div>
-        <hr>
-        
+
         <div class="info-candidato" id="tela-votacao">
           <p>Cargo: <strong id="nome-cargo">Carregando...</strong></p>
-          <div class="numero-display" id="display-numeros">
-            </div>
+          <div class="numero-display" id="display-numeros"></div>
           <div id="nome-candidato"></div>
         </div>
-        
       </div>
 
       <div class="teclado">
@@ -53,27 +50,34 @@
         </div>
       </div>
     </div>
-
-    <button class="btn-navegacao" onclick="ir('/')">Voltar ao Início</button>
   </div>
 
   <script>
-    function ir(rota) { window.location.href = rota; }
-    
+    const socket = io();
+    let tituloEleitorSessao = "";
+    let urnaBloqueada = true;
+
     const etapas = [
       { titulo: 'Governador', digitos: 2 },
       { titulo: 'Presidente', digitos: 2 }
     ];
-    
     let etapaAtual = 0; 
     let voto = "";
     let votosSalvos = {};
-    window.onload = iniciarEtapa;
+
+    socket.on('urna_destravada', function(data) {
+        tituloEleitorSessao = data.titulo;
+        urnaBloqueada = false;
+        document.getElementById('tela-bloqueio').style.display = 'none';
+        
+        etapaAtual = 0;
+        votosSalvos = {};
+        iniciarEtapa();
+    });
 
     function iniciarEtapa() {
       let etapa = etapas[etapaAtual];
       voto = "";
-      
       document.getElementById('nome-cargo').innerText = etapa.titulo;
       
       let htmlNumeros = "";
@@ -85,12 +89,12 @@
     }
 
    function inserir(n) { 
+      if(urnaBloqueada) return;
+
       let etapa = etapas[etapaAtual];
-      
       if(voto.length < etapa.digitos) { 
         voto += n; 
         atualizarDisplay(); 
-        
         if(voto.length === etapa.digitos) {
             buscarCandidato(voto, etapa.titulo);
         }
@@ -100,35 +104,22 @@
     function buscarCandidato(numeroDigitado, nomeCargo) {
         let divNome = document.getElementById('nome-candidato');
         divNome.innerHTML = "<em>Buscando...</em>"; 
-        
         fetch(`/buscar_candidato?numero=${numeroDigitado}&cargo=${nomeCargo}`)
             .then(response => response.json())
             .then(data => {
                 if(data.nome === "VOTO NULO") {
-                    divNome.innerHTML = `
-                        <div style="margin-top: 15px; font-size: 20px;">NÚMERO ERRADO</div>
-                        <div style="font-size: 28px; font-weight: bold; margin-top: 5px;">VOTO NULO</div>
-                    `;
+                    divNome.innerHTML = `<div style="margin-top: 15px; font-size: 20px;">NÚMERO ERRADO</div><div style="font-size: 28px; font-weight: bold; margin-top: 5px;">VOTO NULO</div>`;
                 } else if(data.nome) {
-                    divNome.innerHTML = `
-                        <div style="margin-top: 15px;">
-                            <strong>Nome:</strong> ${data.nome} <br>
-                            <strong>Partido:</strong> ${data.partido}
-                        </div>
-                    `;
+                    divNome.innerHTML = `<div style="margin-top: 15px;"><strong>Nome:</strong> ${data.nome} <br><strong>Partido:</strong> ${data.partido}</div>`;
                 }
             })
-            .catch(err => {
-                console.error("Erro na busca:", err);
-                divNome.innerHTML = "Erro ao buscar candidato.";
-            });
+            .catch(err => divNome.innerHTML = "Erro ao buscar candidato.");
     }
 
     function corrigir() { 
+      if(urnaBloqueada) return;
       voto = ""; 
       document.getElementById('nome-candidato').innerHTML = ""; 
-      
-      let etapa = etapas[etapaAtual];
       if (document.getElementById('display-numeros').innerText === "VOTO EM BRANCO") {
         iniciarEtapa();
       } else {
@@ -145,17 +136,17 @@
     }
 
     function votarBranco() { 
+      if(urnaBloqueada) return;
       voto = "BRANCO"; 
       document.getElementById('display-numeros').innerHTML = "VOTO EM BRANCO";
     }
 
     function confirmar() { 
+      if(urnaBloqueada) return;
+
       let etapa = etapas[etapaAtual];
-      
       if (voto.length === etapa.digitos || voto === "BRANCO") {
-        
         votosSalvos[etapa.titulo] = voto;
-        
         etapaAtual++;
         
         if (etapaAtual < etapas.length) {
@@ -169,19 +160,14 @@
     }
 
    function finalizarVotacao() {
-      let tituloEleitor = document.getElementById('titulo_eleitor').value;
+      urnaBloqueada = true;
       
-      if(!tituloEleitor) {
-          alert("Por favor, digite o título de eleitor no topo da urna antes de finalizar.");
-          return;
-      }
-
       document.getElementById('tela-votacao').innerHTML = `
         <div style="font-size: 40px; text-align: center; margin-top: 40px; font-weight: bold;">FIM</div>
       `;
       
       const payload = {
-        eleitor: tituloEleitor,
+        eleitor: tituloEleitorSessao,
         votos: votosSalvos
       };
       
@@ -195,8 +181,16 @@
          if(data.erro) {
              alert("Erro: " + data.erro);
          } else {
-             console.log(data.mensagem);
-             setTimeout(() => ir('/'), 3000);
+             socket.emit('urna_bloqueada');
+             
+             setTimeout(() => {
+                document.getElementById('tela-bloqueio').style.display = 'flex';
+                document.getElementById('tela-votacao').innerHTML = `
+                  <p>Cargo: <strong id="nome-cargo">...</strong></p>
+                  <div class="numero-display" id="display-numeros"></div>
+                  <div id="nome-candidato"></div>
+                `;
+             }, 3000);
          }
       })
       .catch(err => console.error("Erro ao computar voto:", err));

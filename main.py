@@ -1,50 +1,32 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, jsonify
 from sqlalchemy import create_engine, text
 import os
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
 import uuid
-from flask import jsonify, request
+from flask_socketio import SocketIO, emit
 
 load_dotenv()
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'chave_secreta_para_sockets'
+socketio = SocketIO(app)
+
 UPLOAD_FOLDER = 'tmp'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+ELEICAO_ATUAL = '202610'
 
 engine = create_engine(
-    f"postgresql+psycopg2://{os.getenv("UserBd")}:{os.getenv("PasswordBd")}@{os.getenv("HostBd")}/{os.getenv("nomeBd")}"
+    f"postgresql+psycopg2://{os.getenv('UserBd')}:{os.getenv('PasswordBd')}@{os.getenv('HostBd')}/{os.getenv('nomeBd')}"
 )
-
-
-@app.route("/")
-def index():
-    return render_template("Seleção.html")
-
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in {"csv"}
 
-
-""" @app.route('/eleitor', methods=['GET', 'POST'])
-def upload_file():
-    if request.method == 'POST':
-        if 'file' not in request.files:
-            return 'No file uploaded', 400
-        
-        file = request.files['file']
-        if file.filename == ' ':
-            return 'No file selected', 400
-        
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file_path = os.path.join('/tmp', filename)
-            file.upload(file_path)
-
-            file.save(file_path)
-"""
-
+@app.route("/")
+def index():
+    return render_template("Seleção.html")
 
 @app.route("/eleitor", methods=["GET", "POST"])
 def eleitor():
@@ -60,15 +42,11 @@ def eleitor():
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             return 'File uploaded successfully', 200
-    
-            file.save(os.path.join("election-system", filename))
-            return "File uploaded successfully", 200
 
     with engine.connect() as connection:
         result = connection.execute(text("SELECT * FROM eleitor"))
         eleitores = result.fetchall()
     return render_template("eleitores.html", eleitores=eleitores)
-
 
 @app.route("/candidato", methods=["GET", "POST"])
 def candidato():
@@ -84,9 +62,6 @@ def candidato():
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             return 'File uploaded successfully', 200
-    
-            file.save(os.path.join("/tmp", filename))
-            return "File uploaded successfully", 200
 
     with engine.connect() as connection:
         result = connection.execute(
@@ -95,7 +70,6 @@ def candidato():
             )
         )
         candidatos = result.fetchall()
-        print(candidatos)
     return render_template("candidatos.html", candidatos=candidatos)
 
 @app.route("/votar", methods=["POST"])
@@ -109,19 +83,17 @@ def votar():
     votos = data.get("votos") 
 
     with engine.begin() as connection:
-        
-        check_eleitor = connection.execute(
+        eleitor_db = connection.execute(
             text("SELECT id_eleitor FROM eleitor WHERE titulo = :titulo"),
             {"titulo": titulo_eleitor}
         ).fetchone()
 
-        if not check_eleitor:
+        if not eleitor_db:
             return jsonify({"erro": "Eleitor não encontrado no sistema."}), 404
 
         id_urna_atual = 1
 
         for nome_cargo, numero_digitado in votos.items():
-            
             cargo_db = connection.execute(
                 text("SELECT id_cargo FROM cargo WHERE nome_cargo = :nome_cargo"),
                 {"nome_cargo": nome_cargo}
@@ -200,11 +172,46 @@ def buscar_candidato():
         else:
             return jsonify({"nome": "VOTO NULO"}), 404
 
-
 @app.route("/votacao", methods=["GET"])
 def votacao():
     return render_template("votacao.html")
 
+@app.route("/mesario")
+def mesario():
+    return render_template("mesario.html")
+
+@socketio.on('mesario_libera_urna')
+def handle_liberar(data):
+    titulo = data.get('titulo')
+    
+    with engine.begin() as connection:
+        query = text("""
+            SELECT e.id_eleitor, e.nome, 
+            (SELECT 1 FROM comparecimento c WHERE c.id_eleitor = e.id_eleitor AND c.anomes = :anomes) as ja_votou
+            FROM eleitor e WHERE e.titulo = :titulo
+        """)
+        
+        result = connection.execute(query, {"titulo": titulo, "anomes": ELEICAO_ATUAL}).fetchone()
+
+        if result:
+            id_eleitor, nome_eleitor, ja_votou = result
+            
+            if ja_votou:
+                emit('status_mesario', {'status': f'ALERTA: {nome_eleitor} já votou ou está votando!', 'cor': 'red'})
+            else:
+                connection.execute(
+                    text("INSERT INTO comparecimento (id_eleitor, anomes) VALUES (:id_e, :ano)"),
+                    {"id_e": id_eleitor, "ano": ELEICAO_ATUAL}
+                )
+                
+                emit('urna_destravada', {'titulo': titulo, 'nome': nome_eleitor}, broadcast=True)
+                emit('status_mesario', {'status': f'Urna liberada para: {nome_eleitor}', 'cor': 'green'})
+        else:
+            emit('status_mesario', {'status': 'Título não encontrado!', 'cor': 'red'})
+
+@socketio.on('urna_bloqueada')
+def handle_bloquear():
+    emit('status_mesario', {'status': 'Votação concluída. Aguardando próximo eleitor.', 'cor': 'blue'}, broadcast=True)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    socketio.run(app, debug=True)
