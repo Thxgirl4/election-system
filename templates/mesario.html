@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Terminal do Mesário</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  <style>
+    body {
+        background-color: #e0e0e0;
+        font-family: 'Helvetica', Arial, sans-serif;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+
+    .mesario-container {
+        background: linear-gradient(145deg, #c5c0b4, #e6e1d4);
+        padding: 40px;
+        border-radius: 15px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.3), inset 2px 2px 5px rgba(255,255,255,0.5);
+        border: 1px solid #b5b0a4;
+        width: 100%;
+        max-width: 450px;
+        box-sizing: border-box;
+    }
+
+    .header-mesario {
+        text-align: center;
+        margin-bottom: 35px;
+    }
+
+    .header-mesario h2 {
+        margin: 0;
+        color: #222;
+        font-size: 20px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .header-mesario::before {
+        content: "JUSTIÇA ELEITORAL";
+        display: block;
+        color: #555;
+        font-weight: bold;
+        font-size: 13px;
+        margin-bottom: 8px;
+        letter-spacing: 2px;
+    }
+
+    .input-group {
+        margin-bottom: 25px;
+    }
+
+    .input-group label {
+        display: block;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 14px;
+        text-transform: uppercase;
+    }
+
+    .input-group input {
+        width: 100%;
+        padding: 15px;
+        font-size: 22px;
+        font-weight: bold;
+        background-color: #f2f2f2;
+        border: 4px solid #222;
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.15);
+        border-radius: 5px;
+        box-sizing: border-box;
+        text-align: center;
+        letter-spacing: 3px;
+        color: #000;
+        outline: none;
+    }
+
+    .input-group input:focus {
+        border-color: #00ad5d;
+    }
+
+    .btn-liberar {
+        background: #00ad5d;
+        color: #000;
+        width: 100%;
+        padding: 18px;
+        font-size: 16px;
+        font-weight: bold;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        box-shadow: 3px 3px 0px #000;
+        transition: all 0.1s;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .btn-liberar:active {
+        transform: translateY(3px);
+        box-shadow: 0px 0px 0px #000;
+    }
+
+    .status-container {
+        margin-top: 35px;
+        background-color: #2b2b2b;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: inset 0 5px 15px rgba(0,0,0,0.6);
+        border: 2px solid #111;
+        text-align: center;
+    }
+
+    .status-title {
+        color: #888;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin-bottom: 10px;
+        font-weight: bold;
+    }
+
+    #status-text {
+        margin: 0;
+        font-size: 16px;
+        font-weight: bold;
+        color: #4da6ff;
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-voltar {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        background: linear-gradient(145deg, #333, #1a1a1a);
+        color: #fff;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+        box-shadow: 2px 2px 0px #000;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 1px;
+    }
+
+    .btn-voltar:active {
+        transform: translateY(2px);
+        box-shadow: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="mesario-container">
+    <div class="header-mesario">
+        <h2>Terminal do Mesário</h2>
+    </div>
+    
+    <div class="input-group">
+      <label for="titulo_input">Título do Eleitor</label>
+      <input type="text" id="titulo_input" placeholder="000000000000" maxlength="12">
+    </div>
+
+    <button class="btn-liberar" onclick="liberarUrna()">Liberar Urna</button>
+
+    <div class="status-container">
+      <div class="status-title">Status da Sessão</div>
+      <p id="status-text">Aguardando próximo eleitor.</p>
+    </div>
+  </div>
+
+  <button class="btn-voltar" onclick="window.location.href='/'">Voltar ao Início</button>
+
+  <script>
+    const socket = io();
+
+    function liberarUrna() {
+      const titulo = document.getElementById('titulo_input').value;
+      if (!titulo) {
+        alert("Digite o título do eleitor!");
+        return;
+      }
+      
+      const statusP = document.getElementById('status-text');
+      statusP.innerText = "VERIFICANDO...";
+      statusP.style.color = "#ffc107"; 
+
+      socket.emit('mesario_libera_urna', { titulo: titulo });
+    }
+
+    socket.on('status_mesario', function(data) {
+      const statusP = document.getElementById('status-text');
+      statusP.innerText = data.status.toUpperCase();
+      
+      if(data.cor === 'green') {
+         statusP.style.color = "#00ad5d";
+         document.getElementById('titulo_input').value = "";
+      } else if (data.cor === 'red') {
+         statusP.style.color = "#ff4d4d";
+      } else {
+         statusP.style.color = "#4da6ff";
+      }
+    });
+  </script>
+</body>
+</html>

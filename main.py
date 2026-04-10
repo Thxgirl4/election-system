@@ -1,9 +1,11 @@
+from flask import Flask, request, render_template, jsonify
 from flask import Flask, request, render_template, make_response
 from sqlalchemy import create_engine, text
 import os
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
 import uuid
+from flask_socketio import SocketIO, emit
 from flask import jsonify, request
 from io import BytesIO
 from reportlab.lib.pagesizes import A4
@@ -13,14 +15,20 @@ from datetime import datetime
 load_dotenv()
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'chave_secreta_para_sockets'
+socketio = SocketIO(app)
+
 UPLOAD_FOLDER = 'tmp'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+ELEICAO_ATUAL = '202610'
 
 engine = create_engine(
     f"postgresql+psycopg2://{os.getenv("DB_USER")}:{os.getenv("DB_PASSWORD")}@{os.getenv("DB_HOST")}/{os.getenv("DB_NAME")}"
 )
 
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in {"csv"}
 
 @app.route("/")
 def index():
@@ -47,15 +55,11 @@ def eleitor():
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             return 'File uploaded successfully', 200
-    
-            file.save(os.path.join("election-system", filename))
-            return "File uploaded successfully", 200
 
     with engine.connect() as connection:
         result = connection.execute(text("SELECT * FROM eleitor"))
         eleitores = result.fetchall()
     return render_template("eleitores.html", eleitores=eleitores)
-
 
 @app.route("/candidato", methods=["GET", "POST"])
 def candidato():
@@ -71,9 +75,6 @@ def candidato():
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             return 'File uploaded successfully', 200
-    
-            file.save(os.path.join("/tmp", filename))
-            return "File uploaded successfully", 200
 
     with engine.connect() as connection:
         result = connection.execute(
@@ -82,7 +83,6 @@ def candidato():
             )
         )
         candidatos = result.fetchall()
-        print(candidatos)
     return render_template("candidatos.html", candidatos=candidatos)
 
 @app.route("/votar", methods=["POST"])
@@ -96,19 +96,17 @@ def votar():
     votos = data.get("votos") 
 
     with engine.begin() as connection:
-        
-        check_eleitor = connection.execute(
+        eleitor_db = connection.execute(
             text("SELECT id_eleitor FROM eleitor WHERE titulo = :titulo"),
             {"titulo": titulo_eleitor}
         ).fetchone()
 
-        if not check_eleitor:
+        if not eleitor_db:
             return jsonify({"erro": "Eleitor não encontrado no sistema."}), 404
 
         id_urna_atual = 1
 
         for nome_cargo, numero_digitado in votos.items():
-            
             cargo_db = connection.execute(
                 text("SELECT id_cargo FROM cargo WHERE nome_cargo = :nome_cargo"),
                 {"nome_cargo": nome_cargo}
@@ -225,52 +223,42 @@ def relatorio():
                 {"id_urna": id_urna_atual}
             ).fetchone()
 
-            print(urna_data)
-            print(votos_count)
+@app.route("/mesario")
+def mesario():
+    return render_template("mesario.html")
+
+@socketio.on('mesario_libera_urna')
+def handle_liberar(data):
+    titulo = data.get('titulo')
+    
+    with engine.begin() as connection:
+        query = text("""
+            SELECT e.id_eleitor, e.nome, 
+            (SELECT 1 FROM comparecimento c WHERE c.id_eleitor = e.id_eleitor AND c.anomes = :anomes) as ja_votou
+            FROM eleitor e WHERE e.titulo = :titulo
+        """)
+        
+        result = connection.execute(query, {"titulo": titulo, "anomes": ELEICAO_ATUAL}).fetchone()
+
+        if result:
+            id_eleitor, nome_eleitor, ja_votou = result
             
-            # Gera PDF com dados da urna
-            buffer = BytesIO()
-            pdf = canvas.Canvas(buffer, pagesize=A4)
-            width, height = A4
-            
-            pdf.setFont("Helvetica-Bold", 18)
-            pdf.drawCentredString(width / 2, height - 50, "Relatório da Urna - Zerésima")
-            
-            pdf.setFont("Helvetica", 12)
-            pdf.drawString(50, height - 100, f"Data/Hora: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
-            pdf.drawString(50, height - 120, f"ID da Urna: {id_urna_atual}")
-            
-            if urna_data:
-                y_pos = height - 160
-                pdf.drawString(50, y_pos, "Dados da Urna:")
-                y_pos -= 20
-                pdf.drawString(70, y_pos, f"ID: {urna_data[0]}")
-                y_pos -= 20
-                pdf.drawString(70, y_pos, f"Ano/Mês: {urna_data[1]}")
-                y_pos -= 30
-                
-                pdf.drawString(50, y_pos, "Contagem de Votos:")
-                y_pos -= 20
-                pdf.drawString(70, y_pos, f"Votos Válidos: {votos_count[0]}")
-                y_pos -= 20
-                pdf.drawString(70, y_pos, f"Votos em Branco: {votos_count[1]}")
-                y_pos -= 20
-                pdf.drawString(70, y_pos, f"Votos Nulos: {votos_count[2]}")
-                y_pos -= 20
-                pdf.drawString(70, y_pos, f"Total de Votos: {votos_count[3]}")
+            if ja_votou:
+                emit('status_mesario', {'status': f'ALERTA: {nome_eleitor} já votou ou está votando!', 'cor': 'red'})
             else:
-                pdf.drawString(50, height - 160, "Urna não encontrada no sistema.")
-            
-            pdf.drawString(50, height - 320, "Todos os votos desta urna foram zerados.")
-            pdf.drawString(50, height - 340, "A urna está pronta para receber novos votos.")
-            
-            pdf.save()
-            buffer.seek(0)
-            
-            response = make_response(buffer.getvalue())
-            response.headers['Content-Type'] = 'application/pdf'
-            response.headers['Content-Disposition'] = f'inline; filename=zeresima_urna_{id_urna_atual}.pdf'
-            return response
+                connection.execute(
+                    text("INSERT INTO comparecimento (id_eleitor, anomes) VALUES (:id_e, :ano)"),
+                    {"id_e": id_eleitor, "ano": ELEICAO_ATUAL}
+                )
+                
+                emit('urna_destravada', {'titulo': titulo, 'nome': nome_eleitor}, broadcast=True)
+                emit('status_mesario', {'status': f'Urna liberada para: {nome_eleitor}', 'cor': 'green'})
+        else:
+            emit('status_mesario', {'status': 'Título não encontrado!', 'cor': 'red'})
+
+@socketio.on('urna_bloqueada')
+def handle_bloquear():
+    emit('status_mesario', {'status': 'Votação concluída. Aguardando próximo eleitor.', 'cor': 'blue'}, broadcast=True)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    socketio.run(app, debug=True)

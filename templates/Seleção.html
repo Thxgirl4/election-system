@@ -2,20 +2,41 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Início</title>
+  <title>Início - Sistema Eleitoral</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
 <body>
 
   <div class="container">
-    <h2>Gerenciamento do Sistema</h2>
-    <button class="btn-enviar" onclick="ir('/candidato')">Candidatos</button>
-    <button class="btn-enviar" onclick="ir('/eleitor')">Eleitores</button>
-    <button class="btn-votar" style="margin-top: 20px;" onclick="ir('/votacao')">Iniciar Votação</button>
+    <h2>Gerenciamento de Dados</h2>
+    <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px;">
+        <button class="btn-enviar" onclick="ir('/candidato')">Candidatos</button>
+        <button class="btn-enviar" onclick="ir('/eleitor')">Eleitores</button>
+    </div>
+
+    <hr style="border: none; border-top: 1px solid #ccc; margin: 25px 0;">
+
+    <h2>Operação da Eleição</h2>
+    <div style="display: flex; flex-direction: column; gap: 15px;">
+        <button class="btn-enviar" style="background-color: #ffc107; color: #000; border: 1px solid #d39e00;" onclick="ir('/mesario')">
+            1. Abrir Terminal do Mesário
+        </button>
+        
+        <button class="btn-votar" style="margin-top: 0;" onclick="ir('/votacao')">
+            2. Abrir Urna Eletrônica
+        </button>
+    </div>
   </div>
 
   <script>
-    function ir(rota) { window.location.href = rota; }
+    function ir(rota) { 
+        // Abre em uma nova guia se for a Urna ou o Mesário, para facilitar o teste
+        if(rota === '/mesario' || rota === '/votacao') {
+            window.open(rota, '_blank');
+        } else {
+            window.location.href = rota; 
+        }
+    }
   </script>
 
 </body>
