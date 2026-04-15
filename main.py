@@ -8,9 +8,11 @@ import uuid
 from flask_socketio import SocketIO, emit
 from flask import jsonify, request
 from io import BytesIO
-from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from datetime import datetime
+from reportlab.lib.pagesizes import A4
+from datetime import datetime
+
 
 load_dotenv()
 
@@ -146,6 +148,7 @@ def votar():
                     "tipo_voto": tipo_voto
                 }
             )
+            connection.commit() # voto confirmado
 
     return jsonify({"mensagem": "Votos computados com sucesso!"}), 201
 
@@ -188,7 +191,6 @@ def buscar_candidato():
 
 
 # zera a tabela de votos para cada nova votação
-# falta implementar o relatorio de votos zerados
 @app.route("/votacao", methods=["GET", "POST"])
 def votacao():
     if request.method == "GET":
@@ -222,6 +224,84 @@ def relatorio():
                 """),
                 {"id_urna": id_urna_atual}
             ).fetchone()
+
+            print(votos_count)
+            
+            # Gera PDF com dados da urna
+            buffer = BytesIO()
+            pdf = canvas.Canvas(buffer, pagesize=A4)
+            width, height = A4
+            
+            margin_left = 50
+            margin_right = 50
+            y_pos = height - 50
+            
+            # Título
+            pdf.setFont("Helvetica-Bold", 18)
+            pdf.drawCentredString(width / 2, y_pos, "Relatório da Urna - Zerésima")
+            
+            y_pos -= 40
+            
+            # Informações gerais
+            pdf.setFont("Helvetica", 11)
+            pdf.drawString(margin_left, y_pos, f"Data/Hora: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+            y_pos -= 18
+            pdf.drawString(margin_left, y_pos, f"ID da Urna: {id_urna_atual}")
+            
+            y_pos -= 35
+            
+            # Dados da Urna
+            if urna_data:
+                pdf.setFont("Helvetica-Bold", 12)
+                pdf.drawString(margin_left, y_pos, "Dados da Urna:")
+                y_pos -= 18
+                
+                pdf.setFont("Helvetica", 11)
+                pdf.drawString(margin_left + 20, y_pos, f"ID: {urna_data[0]}")
+                y_pos -= 16
+                pdf.drawString(margin_left + 20, y_pos, f"Ano/Mês: {urna_data[1]}")
+                
+                y_pos -= 30
+                
+                # Contagem de Votos
+                pdf.setFont("Helvetica-Bold", 12)
+                pdf.drawString(margin_left, y_pos, "Contagem de Votos:")
+                y_pos -= 18
+                
+                pdf.setFont("Helvetica", 11)
+                pdf.drawString(margin_left + 20, y_pos, f"Votos Válidos: {votos_count[0]}")
+                y_pos -= 16
+                pdf.drawString(margin_left + 20, y_pos, f"Votos em Branco: {votos_count[1]}")
+                y_pos -= 16
+                pdf.drawString(margin_left + 20, y_pos, f"Votos Nulos: {votos_count[2]}")
+                y_pos -= 16
+                pdf.drawString(margin_left + 20, y_pos, f"Total de Votos: {votos_count[3]}")
+            else:
+                pdf.setFont("Helvetica", 11)
+                pdf.drawString(margin_left, y_pos, "Urna não encontrada no sistema.")
+            
+            y_pos -= 50
+            
+            # Observações finais
+            pdf.setFont("Helvetica", 11)
+            pdf.drawString(margin_left, y_pos, "Todos os votos desta urna foram zerados.")
+            y_pos -= 16
+            pdf.drawString(margin_left, y_pos, "A urna está pronta para receber novos votos.")
+            
+            y_pos -= 30
+            
+            # Rodapé 
+            pdf.setFont("Helvetica-Oblique", 10)
+            pdf.drawCentredString(width / 2, y_pos, "Tribunal Regional do TADS")
+            
+            pdf.save()
+            buffer.seek(0)
+            
+            response = make_response(buffer.getvalue())
+            response.headers['Content-Type'] = 'application/pdf'
+            response.headers['Content-Disposition'] = f'inline; filename=zeresima_urna_{id_urna_atual}.pdf'
+            return response
+
 
 @app.route("/mesario")
 def mesario():
@@ -259,6 +339,12 @@ def handle_liberar(data):
 @socketio.on('urna_bloqueada')
 def handle_bloquear():
     emit('status_mesario', {'status': 'Votação concluída. Aguardando próximo eleitor.', 'cor': 'blue'}, broadcast=True)
+
+@app.route("/encerrar_votacao")
+def encerrar_votacao():
+    
+    return render_template("encerrar.html")
+
 
 if __name__ == "__main__":
     socketio.run(app, debug=True)
