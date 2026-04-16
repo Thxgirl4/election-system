@@ -12,6 +12,7 @@ from reportlab.pdfgen import canvas
 from datetime import datetime
 from reportlab.lib.pagesizes import A4
 from datetime import datetime
+import hashlib
 
 
 load_dotenv()
@@ -32,13 +33,18 @@ engine = create_engine(
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in {"csv"}
 
+
+def gerar_hash_id(voto_id):
+    hash_obj = hashlib.sha256(voto_id.encode('utf-8'))
+    return hash_obj.hexdigest()[:100] 
+
+################################ ROTAS ################################
+
+
 @app.route("/")
 def index():
     return render_template("Seleção.html")
 
-
-def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in {"csv"}
 
 
 
@@ -125,7 +131,7 @@ def votar():
                 tipo_voto = "BRANCO"
             else:
                 candidato_db = connection.execute(
-                    text("SELECT id_candidato FROM candidato WHERE numero_urna = :num AND id_cargo = :id_cargo"),
+                    text("SELECT id_candidato FROM candidato WHERE id_partido = :num AND id_cargo = :id_cargo"),
                     {"num": numero_digitado, "id_cargo": id_cargo}
                 ).fetchone()
 
@@ -134,7 +140,10 @@ def votar():
                 else:
                     tipo_voto = "NULO"
 
-            hash_voto = uuid.uuid4().hex 
+            # gera id unico para cada voto com uuid e hash para garantir criptografia
+            voto_dados = uuid.uuid4().hex
+            hash_voto = gerar_hash_id(voto_dados)
+            print(f"Voto para {nome_cargo}: {tipo_voto} (Hash: {hash_voto})")
             connection.execute(
                 text("""
                     INSERT INTO voto (hash, id_cargo, id_urna, id_candidato, tipo_voto)
@@ -148,7 +157,6 @@ def votar():
                     "tipo_voto": tipo_voto
                 }
             )
-            connection.commit() # voto confirmado
 
     return jsonify({"mensagem": "Votos computados com sucesso!"}), 201
 
@@ -171,12 +179,12 @@ def buscar_candidato():
         
         id_cargo = cargo_db[0]
 
-        # troquei o c.numero_urna por p.num_partido
+        
         query = text("""
             SELECT c.nome_candidato, p.sigla 
             FROM candidato c
             JOIN partido p ON c.id_partido = p.num_partido
-            WHERE p.num_partido = :numero AND c.id_cargo = :id_cargo
+            WHERE c.id_partido = :numero AND c.id_cargo = :id_cargo
         """)
         
         candidato_db = connection.execute(query, {"numero": numero, "id_cargo": id_cargo}).fetchone()
@@ -190,7 +198,7 @@ def buscar_candidato():
             return jsonify({"nome": "VOTO NULO"}), 404
 
 
-# zera a tabela de votos para cada nova votação
+# zera a tabela de votos e comparecimento para cada nova votação
 @app.route("/votacao", methods=["GET", "POST"])
 def votacao():
     if request.method == "GET":
@@ -198,6 +206,7 @@ def votacao():
         
         with engine.connect() as connection:
             connection.execute(text("DELETE FROM voto WHERE id_urna = :id_urna"), {"id_urna": id_urna_atual})
+            connection.execute(text("DELETE FROM comparecimento WHERE anomes = :anomes"), {"anomes": ELEICAO_ATUAL})
             connection.commit()
     
         return render_template("votacao.html")
