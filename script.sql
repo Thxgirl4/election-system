@@ -150,7 +150,17 @@ INSERT INTO eleitor (id_eleitor, nome, titulo, zona, sessao) VALUES
 (7, 'Gabriel Alves', '746583920184', '005', '0112'),
 (8, 'Helena Ribeiro', '293847561029', '124', '0345'),
 (9, 'Igor Carvalho', '847561029384', '076', '0678'),
-(10, 'Julia Lopes', '102938475621', '019', '0901');
+(10, 'Julia Lopes', '102938475621', '019', '0901'),
+(11, 'Mariana Costa', '321654987012', '045', '0123'),
+(12, 'Pedro Almeida', '654987321098', '089', '0456'),
+(13, 'Lucas Rodrigues', '987321654032', '112', '0789'),
+(14, 'Amanda Ferreira', '147258369014', '034', '0258'),
+(15, 'Rafael Gomes', '258369147025', '067', '0369'),
+(16, 'Beatriz Martins', '369147258036', '090', '0147'),
+(17, 'Thiago Rocha', '753951852075', '120', '0852'),
+(18, 'Carolina Mendes', '951753852095', '015', '0963'),
+(19, 'Gustavo Lima', '852963741085', '078', '0741'),
+(20, 'Juliana Castro', '159357258015', '056', '0159');
 
 -- 5. Inserindo Eleições (Ex: 1º Turno de 2026 e 2024)
 INSERT INTO eleicao (anomes, eleicao_nro, ano_eleicao) VALUES 

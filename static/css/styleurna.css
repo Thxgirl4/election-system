@@ -25,25 +25,15 @@ body {
 /* TELA (ESTILO LCD ANTIGO/MODERNO) */
 .tela {
     background-color: #f2f2f2;
-    width: 480px;
-    height: 320px;
+    width: 520px;
+    height: 380px;
     border: 5px solid #222;
-    padding: 25px;
+    padding: 20px;
     box-shadow: inset 0 0 15px rgba(0,0,0,0.2);
     display: flex;
     flex-direction: column;
     position: relative;
-}
-
-/* ELEMENTOS DA TELA */
-.tela-info {
-    flex: 1;
-}
-
-.tela-info h2 {
-    font-size: 18px;
-    margin: 0;
-    text-transform: uppercase;
+    justify-content: space-between;
 }
 
 /* DISPLAY DOS NÚMEROS (QUADRADINHOS) */
@@ -63,6 +53,72 @@ body {
     font-size: 28px;
     font-weight: bold;
     background: #fff;
+}
+
+/* NOVAS ESTRUTURAS INTERNAS DA TELA DA URNA */
+.tela-votacao {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    justify-content: space-between;
+}
+
+.tela-superior {
+    display: flex;
+    justify-content: space-between;
+    height: 100%;
+}
+
+.info-candidato {
+    display: flex;
+    flex-direction: column;
+    width: 65%;
+}
+
+.titulo-voto {
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+.cargo {
+    font-size: 24px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+
+.dados-candidato {
+    font-size: 18px;
+    line-height: 1.6;
+    margin-top: 5px;
+}
+
+.foto-candidato {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 120px;
+}
+
+.foto-candidato img {
+    width: 115px;
+    height: 155px;
+    object-fit: cover;
+    border: 1px solid #333;
+}
+
+.foto-candidato div {
+    font-size: 11px;
+    margin-top: 5px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.rodape-tela {
+    font-size: 14px;
+    border-top: 2px solid #333;
+    padding-top: 10px;
+    line-height: 1.5;
 }
 
 /* TECLADO */
