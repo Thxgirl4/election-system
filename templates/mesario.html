@@ -176,9 +176,11 @@
     </div>
   </div>
 
-  <button class="btn-voltar" onclick="window.location.href='/'">Voltar ao Início</button>
+  <button class="btn-voltar" onclick="ir('/')">Voltar ao Início</button>
+  <button class="btn-encerrar" onclick="ir('/encerrar_votacao')" ></button>
 
   <script>
+    function ir(rota) { window.location.href = rota; }
     const socket = io();
 
     function liberarUrna() {
