@@ -1,12 +1,10 @@
-from flask import Flask, request, render_template, jsonify
-from flask import Flask, request, render_template, make_response
+from flask import Flask, request, render_template, jsonify, make_response
 from sqlalchemy import create_engine, text
 import os
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
 import uuid
 from flask_socketio import SocketIO, emit
-from flask import jsonify, request
 from io import BytesIO
 from reportlab.pdfgen import canvas
 from datetime import datetime
@@ -28,7 +26,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 ELEICAO_ATUAL = '202610'
 
 engine = create_engine(
-    f"postgresql+psycopg2://{os.getenv("DB_USER")}:{os.getenv("DB_PASSWORD")}@{os.getenv("DB_HOST")}/{os.getenv("DB_NAME")}"
+    f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}"
 )
 
 def allowed_file(filename):
@@ -207,30 +205,39 @@ def votacao():
             connection.execute(text("DELETE FROM comparecimento WHERE anomes = :anomes"), {"anomes": ELEICAO_ATUAL})
             connection.commit()
     
-        return render_template("votacao.html")
+    return render_template("votacao.html")
 
 # rota para gerar primeiro relatório
 @app.route("/relatorio", methods=["GET"])
 def relatorio():
-        id_urna_atual = 1 # mudar logica para pegar o id da urna dinamicamente
-        with engine.connect() as connection:    
-            urna_data = connection.execute(
-                text("SELECT id_urna, anomes FROM urna_eleicao WHERE id_urna = :id_urna"),
-                {"id_urna": id_urna_atual}
-            ).fetchone()
+    id_urna_atual = 1 # mudar logica para pegar o id da urna dinamicamente
+    with engine.connect() as connection:    
+        urna_data = connection.execute(
+            text("SELECT id_urna, anomes FROM urna_eleicao WHERE id_urna = :id_urna"),
+            {"id_urna": id_urna_atual}
+        ).fetchone()
 
-            votos_count = connection.execute(
-                text("""
-                    SELECT 
-                        COALESCE(SUM(CASE WHEN tipo_voto = 'VALIDO' THEN 1 ELSE 0 END), 0) as validos,
-                        COALESCE(SUM(CASE WHEN tipo_voto = 'BRANCO' THEN 1 ELSE 0 END), 0) as brancos,
-                        COALESCE(SUM(CASE WHEN tipo_voto = 'NULO' THEN 1 ELSE 0 END), 0) as nulos,
-                        COALESCE(COUNT(*), 0) as total
-                    FROM voto 
-                    WHERE id_urna = :id_urna
-                """),
-                {"id_urna": id_urna_atual}
-            ).fetchone()
+        votos_count = connection.execute(
+            text("""
+                SELECT 
+                    COALESCE(SUM(CASE WHEN tipo_voto = 'VALIDO' THEN 1 ELSE 0 END), 0) as validos,
+                    COALESCE(SUM(CASE WHEN tipo_voto = 'BRANCO' THEN 1 ELSE 0 END), 0) as brancos,
+                    COALESCE(SUM(CASE WHEN tipo_voto = 'NULO' THEN 1 ELSE 0 END), 0) as nulos,
+                    COALESCE(COUNT(*), 0) as total
+                FROM voto 
+                WHERE id_urna = :id_urna
+            """),
+            {"id_urna": id_urna_atual}
+        ).fetchone()
+
+        return jsonify({
+            "id_urna": urna_data[0] if urna_data else id_urna_atual,
+            "anomes": urna_data[1] if urna_data else None,
+            "votos_validos": int(votos_count[0]) if votos_count else 0,
+            "votos_brancos": int(votos_count[1]) if votos_count else 0,
+            "votos_nulos": int(votos_count[2]) if votos_count else 0,
+            "total_votos": int(votos_count[3]) if votos_count else 0
+        })
 
             print(votos_count)
             

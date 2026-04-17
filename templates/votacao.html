@@ -18,15 +18,26 @@
       <div class="tela">
         <div id="tela-bloqueio" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #222; color: #fff; display: flex; align-items: center; justify-content: center; z-index: 10; font-size: 20px; font-weight: bold; text-align: center; flex-direction: column;">
           AGUARDANDO<br>LIBERAÇÃO
-        <div class="campo-voto">
-        <!  <label Título do Eleitor:</label 
-          <input type="text" id="titulo_eleitor" maxlength="12" placeholder="0000 0000 0000">
         </div>
 
-        <div class="info-candidato" id="tela-votacao">
-          <p>Cargo: <strong id="nome-cargo">Carregando...</strong></p>
-          <div class="numero-display" id="display-numeros"></div>
-          <div id="nome-candidato"></div>
+        <div id="tela-votacao" class="tela-votacao">
+          <div class="tela-superior">
+            <div class="info-candidato">
+              <div class="titulo-voto">SEU VOTO PARA</div>
+              <div class="cargo" id="nome-cargo">Carregando...</div>
+              <div class="numero-display" id="display-numeros"></div>
+              <div id="dados-candidato" class="dados-candidato"></div>
+            </div>
+            <div class="foto-candidato" id="foto-container" style="display: none;">
+              <img id="foto-img" src="" alt="Foto do Candidato">
+              <div id="foto-cargo">CANDIDATO</div>
+            </div>
+          </div>
+          <div class="rodape-tela" id="rodape-tela" style="display: none;">
+            Aperte a tecla:<br>
+            <strong>VERDE</strong> para CONFIRMAR este voto<br>
+            <strong>LARANJA</strong> para REINICIAR este voto
+          </div>
         </div>
       </div>
 
@@ -88,12 +99,15 @@
       voto = "";
       document.getElementById('nome-cargo').innerText = etapa.titulo;
       
+      document.getElementById('foto-container').style.display = 'none';
+      document.getElementById('rodape-tela').style.display = 'none';
+      document.getElementById('dados-candidato').innerHTML = "";
+      
       let htmlNumeros = "";
       for(let i = 0; i < etapa.digitos; i++) {
         htmlNumeros += `<span id="digito${i}">_</span>`;
       }
       document.getElementById('display-numeros').innerHTML = htmlNumeros;
-      document.getElementById('nome-candidato').innerText = "";
     }
 
    function inserir(n) { 
@@ -110,25 +124,36 @@
     }
 
     function buscarCandidato(numeroDigitado, nomeCargo) {
-        let divNome = document.getElementById('nome-candidato');
-        divNome.innerHTML = "<em>Buscando...</em>"; 
+        let divDados = document.getElementById('dados-candidato');
+        let fotoContainer = document.getElementById('foto-container');
+        let fotoImg = document.getElementById('foto-img');
+        let rodapeTela = document.getElementById('rodape-tela');
+
+        divDados.innerHTML = "<em>Buscando...</em>"; 
         fetch(`/buscar_candidato?numero=${numeroDigitado}&cargo=${nomeCargo}`)
             .then(response => response.json())
             .then(data => {
+                rodapeTela.style.display = 'block';
                 if(data.nome === "VOTO NULO") {
-                    divNome.innerHTML = `<div style="margin-top: 15px; font-size: 20px;">NÚMERO ERRADO</div><div style="font-size: 28px; font-weight: bold; margin-top: 5px;">VOTO NULO</div>`;
+                    divDados.innerHTML = `<div style="margin-top: 15px; font-size: 20px;">NÚMERO ERRADO</div><div style="font-size: 28px; font-weight: bold; margin-top: 5px;">VOTO NULO</div>`;
+                    fotoContainer.style.display = 'none';
                 } else if(data.nome) {
-                    divNome.innerHTML = `<div style="margin-top: 15px;"><strong>Nome:</strong> ${data.nome} <br><strong>Partido:</strong> ${data.partido}</div>`;
+                    divDados.innerHTML = `<div style="margin-top: 15px;">Nome: <strong>${data.nome}</strong><br>Partido: <strong>${data.partido}</strong></div>`;
+                    // Colocando uma foto aleatória da internet para testes:
+                    fotoImg.src = `https://picsum.photos/150/200?random=${Math.random()}`;
+                    fotoContainer.style.display = 'flex';
                 }
             })
-            .catch(err => divNome.innerHTML = "Erro ao buscar candidato.");
+            .catch(err => divDados.innerHTML = "Erro ao buscar candidato.");
     }
 
     function corrigir() { 
       if(urnaBloqueada) return;
       voto = ""; 
-      document.getElementById('nome-candidato').innerHTML = ""; 
-      if (document.getElementById('display-numeros').innerText === "VOTO EM BRANCO") {
+      document.getElementById('dados-candidato').innerHTML = ""; 
+      document.getElementById('foto-container').style.display = 'none';
+      document.getElementById('rodape-tela').style.display = 'none';
+      if (document.getElementById('display-numeros').innerText.includes("VOTO EM BRANCO")) {
         iniciarEtapa();
       } else {
         atualizarDisplay(); 
@@ -146,7 +171,10 @@
     function votarBranco() { 
       if(urnaBloqueada) return;
       voto = "BRANCO"; 
-      document.getElementById('display-numeros').innerHTML = "VOTO EM BRANCO";
+      document.getElementById('display-numeros').innerHTML = "<div style='font-size: 32px; font-weight: bold; margin-top: 20px;'>VOTO EM BRANCO</div>";
+      document.getElementById('dados-candidato').innerHTML = "";
+      document.getElementById('foto-container').style.display = 'none';
+      document.getElementById('rodape-tela').style.display = 'block';
     }
 
     function confirmar() { 
@@ -194,9 +222,7 @@
              setTimeout(() => {
                 document.getElementById('tela-bloqueio').style.display = 'flex';
                 document.getElementById('tela-votacao').innerHTML = `
-                  <p>Cargo: <strong id="nome-cargo">...</strong></p>
-                  <div class="numero-display" id="display-numeros"></div>
-                  <div id="nome-candidato"></div>
+                  <!-- Estrutura resetada pelo socket liberador depois -->
                 `;
              }, 3000);
          }
