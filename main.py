@@ -5,6 +5,14 @@ from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
 import uuid
 from flask_socketio import SocketIO, emit
+from io import BytesIO
+from reportlab.pdfgen import canvas
+from datetime import datetime
+from reportlab.lib.pagesizes import A4
+from datetime import datetime
+import hashlib
+import json
+
 
 load_dotenv()
 
@@ -23,6 +31,14 @@ engine = create_engine(
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in {"csv"}
+
+
+def gerar_hash_id(voto_id):
+    hash_obj = hashlib.sha256(voto_id.encode('utf-8'))
+    return hash_obj.hexdigest()[:100] 
+
+################################ ROTAS ################################
+
 
 @app.route("/")
 def index():
@@ -119,7 +135,10 @@ def votar():
                 else:
                     tipo_voto = "NULO"
 
-            hash_voto = uuid.uuid4().hex 
+            # gera id unico para cada voto com uuid e hash para garantir criptografia
+            voto_dados = uuid.uuid4().hex
+            hash_voto = gerar_hash_id(voto_dados)
+            print(f"Voto para {nome_cargo}: {tipo_voto} (Hash: {hash_voto})")
             connection.execute(
                 text("""
                     INSERT INTO voto (hash, id_cargo, id_urna, id_candidato, tipo_voto)
@@ -173,9 +192,257 @@ def buscar_candidato():
         else:
             return jsonify({"nome": "VOTO NULO"}), 404
 
-@app.route("/votacao", methods=["GET"])
+
+# zera a tabela de votos e comparecimento para cada nova votação
+@app.route("/votacao", methods=["GET", "POST"])
 def votacao():
+    if request.method == "GET":
+        id_urna_atual = 1 # mudar logica para pegar o id da urna dinamicamente
+        
+        with engine.connect() as connection:
+            connection.execute(text("DELETE FROM voto WHERE id_urna = :id_urna"), {"id_urna": id_urna_atual})
+            connection.execute(text("DELETE FROM comparecimento WHERE anomes = :anomes"), {"anomes": ELEICAO_ATUAL})
+            connection.commit()
+    
     return render_template("votacao.html")
+
+# rota para gerar primeiro relatório
+@app.route("/relatorio", methods=["GET"])
+def relatorio():
+    id_urna_atual = 1 # mudar logica para pegar o id da urna dinamicamente
+    with engine.connect() as connection:    
+        urna_data = connection.execute(
+            text("SELECT id_urna, anomes FROM urna_eleicao WHERE id_urna = :id_urna"),
+            {"id_urna": id_urna_atual}
+        ).fetchone()
+
+        votos_count = connection.execute(
+            text("""
+                SELECT 
+                    COALESCE(SUM(CASE WHEN tipo_voto = 'VALIDO' THEN 1 ELSE 0 END), 0) as validos,
+                    COALESCE(SUM(CASE WHEN tipo_voto = 'BRANCO' THEN 1 ELSE 0 END), 0) as brancos,
+                    COALESCE(SUM(CASE WHEN tipo_voto = 'NULO' THEN 1 ELSE 0 END), 0) as nulos,
+                    COALESCE(COUNT(*), 0) as total
+                FROM voto 
+                WHERE id_urna = :id_urna
+            """),
+            {"id_urna": id_urna_atual}
+        ).fetchone()
+
+        return jsonify({
+            "id_urna": urna_data[0] if urna_data else id_urna_atual,
+            "anomes": urna_data[1] if urna_data else None,
+            "votos_validos": int(votos_count[0]) if votos_count else 0,
+            "votos_brancos": int(votos_count[1]) if votos_count else 0,
+            "votos_nulos": int(votos_count[2]) if votos_count else 0,
+            "total_votos": int(votos_count[3]) if votos_count else 0
+        })
+
+            print(votos_count)
+            
+            # Gera PDF com dados da urna
+            buffer = BytesIO()
+            pdf = canvas.Canvas(buffer, pagesize=A4)
+            width, height = A4
+            
+            margin_left = 50
+            margin_right = 50
+            y_pos = height - 50
+            
+            # Título
+            pdf.setFont("Helvetica-Bold", 18)
+            pdf.drawCentredString(width / 2, y_pos, "Relatório da Urna - Zerésima")
+            
+            y_pos -= 40
+            
+            # Informações gerais
+            pdf.setFont("Helvetica", 11)
+            pdf.drawString(margin_left, y_pos, f"Data/Hora: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+            y_pos -= 18
+            pdf.drawString(margin_left, y_pos, f"ID da Urna: {id_urna_atual}")
+            
+            y_pos -= 35
+            
+            # Dados da Urna
+            if urna_data:
+                pdf.setFont("Helvetica-Bold", 12)
+                pdf.drawString(margin_left, y_pos, "Dados da Urna:")
+                y_pos -= 18
+                
+                pdf.setFont("Helvetica", 11)
+                pdf.drawString(margin_left + 20, y_pos, f"ID: {urna_data[0]}")
+                y_pos -= 16
+                pdf.drawString(margin_left + 20, y_pos, f"Ano/Mês: {urna_data[1]}")
+                
+                y_pos -= 30
+                
+                # Contagem de Votos
+                pdf.setFont("Helvetica-Bold", 12)
+                pdf.drawString(margin_left, y_pos, "Contagem de Votos:")
+                y_pos -= 18
+                
+                pdf.setFont("Helvetica", 11)
+                pdf.drawString(margin_left + 20, y_pos, f"Votos Válidos: {votos_count[0]}")
+                y_pos -= 16
+                pdf.drawString(margin_left + 20, y_pos, f"Votos em Branco: {votos_count[1]}")
+                y_pos -= 16
+                pdf.drawString(margin_left + 20, y_pos, f"Votos Nulos: {votos_count[2]}")
+                y_pos -= 16
+                pdf.drawString(margin_left + 20, y_pos, f"Total de Votos: {votos_count[3]}")
+            else:
+                pdf.setFont("Helvetica", 11)
+                pdf.drawString(margin_left, y_pos, "Urna não encontrada no sistema.")
+            
+            y_pos -= 50
+            
+            # Observações finais
+            pdf.setFont("Helvetica", 11)
+            pdf.drawString(margin_left, y_pos, "Todos os votos desta urna foram zerados.")
+            y_pos -= 16
+            pdf.drawString(margin_left, y_pos, "A urna está pronta para receber novos votos.")
+            
+            y_pos -= 30
+            
+            # Rodapé 
+            pdf.setFont("Helvetica-Oblique", 10)
+            pdf.drawCentredString(width / 2, y_pos, "Tribunal Regional do TADS")
+            
+            pdf.save()
+            buffer.seek(0)
+            
+            response = make_response(buffer.getvalue())
+            response.headers['Content-Type'] = 'application/pdf'
+            response.headers['Content-Disposition'] = f'inline; filename=zeresima_urna_{id_urna_atual}.pdf'
+            return response
+
+# rota para gerar relatório de encerramento
+@app.route("/relatorio_final", methods=["GET"])
+def relatorio_final():
+        id_urna_atual = 1 # mudar logica para pegar o id da urna dinamicamente
+        with engine.connect() as connection:    
+            urna_data = connection.execute(
+                text("SELECT id_urna, anomes FROM urna_eleicao WHERE id_urna = :id_urna"),
+                {"id_urna": id_urna_atual}
+            ).fetchone()
+
+            votos_count = connection.execute(
+                text("""
+                    SELECT 
+                        COALESCE(SUM(CASE WHEN tipo_voto = 'VALIDO' THEN 1 ELSE 0 END), 0) as validos,
+                        COALESCE(SUM(CASE WHEN tipo_voto = 'BRANCO' THEN 1 ELSE 0 END), 0) as brancos,
+                        COALESCE(SUM(CASE WHEN tipo_voto = 'NULO' THEN 1 ELSE 0 END), 0) as nulos,
+                        COALESCE(COUNT(*), 0) as total
+                    FROM voto 
+                    WHERE id_urna = :id_urna
+                """),
+                {"id_urna": id_urna_atual}
+            ).fetchone()
+
+            votos_candidatos = connection.execute(text("""
+                SELECT v.tipo_voto, u.data_comparecimento, c.nome_candidato, p.nome_partido, p.num_partido, ca.nome_cargo, COUNT(*) AS total_votos
+                FROM voto v
+                JOIN urna u ON v.id_urna = u.id_urna
+                JOIN candidato c ON v.id_candidato = c.id_candidato
+                JOIN partido p ON c.id_partido = p.num_partido
+                JOIN cargo ca ON c.id_cargo = ca.id_cargo
+                WHERE v.id_urna = :id_urna AND v.tipo_voto = 'VALIDO'
+                GROUP BY v.tipo_voto, u.data_comparecimento, c.nome_candidato, p.nome_partido, p.num_partido, ca.nome_cargo
+            """), {"id_urna": id_urna_atual}).fetchall()   
+
+            print(votos_candidatos)    
+            print(urna_data)
+            print(votos_count)
+
+            # Gera PDF com dados da urna
+            buffer = BytesIO()
+            pdf = canvas.Canvas(buffer, pagesize=A4)
+            width, height = A4
+            
+            margin_left = 50
+            margin_right = 50
+            y_pos = height - 50
+            
+            # Título
+            pdf.setFont("Helvetica-Bold", 18)
+            pdf.drawCentredString(width / 2, y_pos, "Relatório da Urna - Encerramento")
+            
+            y_pos -= 40
+            
+            # Informações gerais
+            pdf.setFont("Helvetica", 11)
+            pdf.drawString(margin_left, y_pos, f"Data/Hora: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+            y_pos -= 18
+            pdf.drawString(margin_left, y_pos, f"ID da Urna: {id_urna_atual}")
+            
+            y_pos -= 35
+            
+            # Dados da Urna
+            if urna_data:
+                pdf.setFont("Helvetica-Bold", 12)
+                pdf.drawString(margin_left, y_pos, "Dados da Urna:")
+                y_pos -= 18
+                
+                pdf.setFont("Helvetica", 11)
+                pdf.drawString(margin_left + 20, y_pos, f"ID: {urna_data[0]}")
+                y_pos -= 16
+                pdf.drawString(margin_left + 20, y_pos, f"Ano/Mês: {urna_data[1]}")
+                
+                y_pos -= 30
+                
+                # Contagem de Votos
+                pdf.setFont("Helvetica-Bold", 12)
+                pdf.drawString(margin_left, y_pos, "Contagem de Votos:")
+                y_pos -= 18
+                
+                pdf.setFont("Helvetica", 11)
+                pdf.drawString(margin_left + 20, y_pos, f"Votos Válidos: {votos_count[0]}")
+                y_pos -= 16
+                pdf.drawString(margin_left + 20, y_pos, f"Votos em Branco: {votos_count[1]}")
+                y_pos -= 16
+                pdf.drawString(margin_left + 20, y_pos, f"Votos Nulos: {votos_count[2]}")
+                y_pos -= 16
+                pdf.drawString(margin_left + 20, y_pos, f"Total de Votos: {votos_count[3]}")
+
+                y_pos -= 30
+
+                # Votos por Candidato
+                pdf.setFont("Helvetica-Bold", 12)
+                pdf.drawString(margin_left, y_pos, "Votos por Candidato:")
+                y_pos -= 18
+
+                pdf.setFont("Helvetica", 11)
+                for voto in votos_candidatos:
+                    tipo_voto, data_comparecimento, nome_candidato, nome_partido, num_partido, nome_cargo, total_votos = voto
+                    pdf.drawString(margin_left + 20, y_pos, f"{nome_candidato} ({nome_partido} - {num_partido}) para {nome_cargo}: {total_votos} votos")
+                    y_pos -= 16
+                    if y_pos < 100:  # Verifica se precisa criar nova página
+                        pdf.showPage()
+                        y_pos = height - 50
+            else:
+                pdf.setFont("Helvetica", 11)
+                pdf.drawString(margin_left, y_pos, "Urna não encontrada no sistema.")
+            
+            y_pos -= 50
+            
+            # Observações finais
+            pdf.setFont("Helvetica", 11)
+            pdf.drawString(margin_left, y_pos, "Todos os votos desta urna foram contabilizados.")
+            y_pos -= 16
+            pdf.drawString(margin_left, y_pos, "Esta urna foi encerrada.")
+            
+            y_pos -= 30
+            
+            # Rodapé 
+            pdf.setFont("Helvetica-Oblique", 10)
+            pdf.drawCentredString(width / 2, y_pos, "Tribunal Regional do TADS")
+            
+            pdf.save()
+            buffer.seek(0)
+            
+            response = make_response(buffer.getvalue())
+            response.headers['Content-Type'] = 'application/pdf'
+            response.headers['Content-Disposition'] = f'inline; filename=zeresima_urna_{id_urna_atual}.pdf'
+            return response
 
 @app.route("/mesario")
 def mesario():
@@ -213,6 +480,12 @@ def handle_liberar(data):
 @socketio.on('urna_bloqueada')
 def handle_bloquear():
     emit('status_mesario', {'status': 'Votação concluída. Aguardando próximo eleitor.', 'cor': 'blue'}, broadcast=True)
+
+@app.route("/encerrar_votacao")
+def encerrar_votacao():
+    
+    return render_template("encerrar.html")
+
 
 if __name__ == "__main__":
     socketio.run(app, debug=True)
