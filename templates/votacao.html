@@ -1,234 +1,236 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Votação</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/styleurna.css') }}" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Votação</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styleurna.css') }}"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Urna Eletrônica</h2>
 
-  <div class="container">
-    <h2>Urna Eletrônica</h2>
-    <button class="btn-navegacao" onclick="ir('/relatorio')"> 1º Relatório da urna</button>
-    <button class="btn-navegacao" onclick="ir('/')">Voltar ao Início</button>
-    <button class="btn-navegacao" onclick="ir('/relatorio_final')">Relatorio Final</button>
-    
-    <div class="urna">
-      <div class="tela">
-        <div id="tela-bloqueio" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #222; color: #fff; display: flex; align-items: center; justify-content: center; z-index: 10; font-size: 20px; font-weight: bold; text-align: center; flex-direction: column;">
-          AGUARDANDO<br>LIBERAÇÃO
-        </div>
-
-        <div id="tela-votacao" class="tela-votacao">
-          <div class="tela-superior">
-            <div class="info-candidato">
-              <div class="titulo-voto">SEU VOTO PARA</div>
-              <div class="cargo" id="nome-cargo">Carregando...</div>
-              <div class="numero-display" id="display-numeros"></div>
-              <div id="dados-candidato" class="dados-candidato"></div>
-            </div>
-            <div class="foto-candidato" id="foto-container" style="display: none;">
-              <img id="foto-img" src="" alt="Foto do Candidato">
-              <div id="foto-cargo">CANDIDATO</div>
-            </div>
+      <div class="urna">
+        <div class="tela">
+          <div
+            id="tela-bloqueio"
+            style="
+              position: absolute;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
+              background-color: #222;
+              color: #fff;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              z-index: 10;
+              font-size: 20px;
+              font-weight: bold;
+              text-align: center;
+              flex-direction: column;
+            "
+          >
+            AGUARDANDO<br />LIBERAÇÃO
           </div>
-          <div class="rodape-tela" id="rodape-tela" style="display: none;">
-            Aperte a tecla:<br>
-            <strong>VERDE</strong> para CONFIRMAR este voto<br>
-            <strong>LARANJA</strong> para REINICIAR este voto
+
+          <div class="info-candidato" id="tela-votacao">
+            <p>Cargo: <strong id="nome-cargo">Carregando...</strong></p>
+            <div class="numero-display" id="display-numeros"></div>
+            <div id="nome-candidato"></div>
           </div>
         </div>
-      </div>
 
-      <div class="teclado">
-        <div class="linha">
-          <button onclick="inserir(1)">1</button>
-          <button onclick="inserir(2)">2</button>
-          <button onclick="inserir(3)">3</button>
-        </div>
-        <div class="linha">
-          <button onclick="inserir(4)">4</button>
-          <button onclick="inserir(5)">5</button>
-          <button onclick="inserir(6)">6</button>
-        </div>
-        <div class="linha">
-          <button onclick="inserir(7)">7</button>
-          <button onclick="inserir(8)">8</button>
-          <button onclick="inserir(9)">9</button>
-        </div>
-        <div class="linha">
-          <button onclick="inserir(0)">0</button>
-        </div>
-        <div class="acoes">
-          <button class="btn-branco" onclick="votarBranco()">BRANCO</button>
-          <button class="btn-corrige" onclick="corrigir()">CORRIGE</button>
-          <button class="btn-confirma" onclick="confirmar()">CONFIRMA</button>
+        <div class="teclado">
+          <div class="linha">
+            <button onclick="inserir(1)">1</button>
+            <button onclick="inserir(2)">2</button>
+            <button onclick="inserir(3)">3</button>
+          </div>
+          <div class="linha">
+            <button onclick="inserir(4)">4</button>
+            <button onclick="inserir(5)">5</button>
+            <button onclick="inserir(6)">6</button>
+          </div>
+          <div class="linha">
+            <button onclick="inserir(7)">7</button>
+            <button onclick="inserir(8)">8</button>
+            <button onclick="inserir(9)">9</button>
+          </div>
+          <div class="linha">
+            <button onclick="inserir(0)">0</button>
+          </div>
+          <div class="acoes">
+            <button class="btn-branco" onclick="votarBranco()">BRANCO</button>
+            <button class="btn-corrige" onclick="corrigir()">CORRIGE</button>
+            <button class="btn-confirma" onclick="confirmar()">CONFIRMA</button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <script>
-    function ir(rota) { window.location.href = rota; }
+    <script>
+      const socket = io();
+      let tituloEleitorSessao = "";
+      let urnaBloqueada = true;
 
-    const socket = io();
-    let tituloEleitorSessao = "";
-    let urnaBloqueada = true;
+      const etapas = [
+        { titulo: "Governador", digitos: 2 },
+        { titulo: "Presidente", digitos: 2 },
+      ];
+      let etapaAtual = 0;
+      let voto = "";
+      let votosSalvos = {};
 
-    const etapas = [
-      { titulo: 'Governador', digitos: 2 },
-      { titulo: 'Presidente', digitos: 2 }
-    ];
-    let etapaAtual = 0; 
-    let voto = "";
-    let votosSalvos = {};
-
-    socket.on('urna_destravada', function(data) {
+      socket.on("urna_destravada", function (data) {
         tituloEleitorSessao = data.titulo;
         urnaBloqueada = false;
-        document.getElementById('tela-bloqueio').style.display = 'none';
-        
+        document.getElementById("tela-bloqueio").style.display = "none";
+
         etapaAtual = 0;
         votosSalvos = {};
         iniciarEtapa();
-    });
+      });
 
-    function iniciarEtapa() {
-      let etapa = etapas[etapaAtual];
-      voto = "";
-      document.getElementById('nome-cargo').innerText = etapa.titulo;
-      
-      document.getElementById('foto-container').style.display = 'none';
-      document.getElementById('rodape-tela').style.display = 'none';
-      document.getElementById('dados-candidato').innerHTML = "";
-      
-      let htmlNumeros = "";
-      for(let i = 0; i < etapa.digitos; i++) {
-        htmlNumeros += `<span id="digito${i}">_</span>`;
-      }
-      document.getElementById('display-numeros').innerHTML = htmlNumeros;
-    }
+      function iniciarEtapa() {
+        let etapa = etapas[etapaAtual];
+        voto = "";
+        document.getElementById("nome-cargo").innerText = etapa.titulo;
 
-   function inserir(n) { 
-      if(urnaBloqueada) return;
-
-      let etapa = etapas[etapaAtual];
-      if(voto.length < etapa.digitos) { 
-        voto += n; 
-        atualizarDisplay(); 
-        if(voto.length === etapa.digitos) {
-            buscarCandidato(voto, etapa.titulo);
+        let htmlNumeros = "";
+        for (let i = 0; i < etapa.digitos; i++) {
+          htmlNumeros += `<span id="digito${i}">_</span>`;
         }
-      } 
-    }
+        document.getElementById("display-numeros").innerHTML = htmlNumeros;
+        document.getElementById("nome-candidato").innerText = "";
+      }
 
-    function buscarCandidato(numeroDigitado, nomeCargo) {
-        let divDados = document.getElementById('dados-candidato');
-        let fotoContainer = document.getElementById('foto-container');
-        let fotoImg = document.getElementById('foto-img');
-        let rodapeTela = document.getElementById('rodape-tela');
+      function inserir(n) {
+        if (urnaBloqueada) return;
 
-        divDados.innerHTML = "<em>Buscando...</em>"; 
+        let etapa = etapas[etapaAtual];
+        if (voto.length < etapa.digitos) {
+          voto += n;
+          atualizarDisplay();
+          if (voto.length === etapa.digitos) {
+            buscarCandidato(voto, etapa.titulo);
+          }
+        }
+      }
+
+      function buscarCandidato(numeroDigitado, nomeCargo) {
+        let divNome = document.getElementById("nome-candidato");
+        divNome.innerHTML = "<em>Buscando...</em>";
         fetch(`/buscar_candidato?numero=${numeroDigitado}&cargo=${nomeCargo}`)
-            .then(response => response.json())
-            .then(data => {
-                rodapeTela.style.display = 'block';
-                if(data.nome === "VOTO NULO") {
-                    divDados.innerHTML = `<div style="margin-top: 15px; font-size: 20px;">NÚMERO ERRADO</div><div style="font-size: 28px; font-weight: bold; margin-top: 5px;">VOTO NULO</div>`;
-                    fotoContainer.style.display = 'none';
-                } else if(data.nome) {
-                    divDados.innerHTML = `<div style="margin-top: 15px;">Nome: <strong>${data.nome}</strong><br>Partido: <strong>${data.partido}</strong></div>`;
-                    // Colocando uma foto aleatória da internet para testes:
-                    fotoImg.src = `https://picsum.photos/150/200?random=${Math.random()}`;
-                    fotoContainer.style.display = 'flex';
-                }
-            })
-            .catch(err => divDados.innerHTML = "Erro ao buscar candidato.");
-    }
-
-    function corrigir() { 
-      if(urnaBloqueada) return;
-      voto = ""; 
-      document.getElementById('dados-candidato').innerHTML = ""; 
-      document.getElementById('foto-container').style.display = 'none';
-      document.getElementById('rodape-tela').style.display = 'none';
-      if (document.getElementById('display-numeros').innerText.includes("VOTO EM BRANCO")) {
-        iniciarEtapa();
-      } else {
-        atualizarDisplay(); 
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.nome === "VOTO NULO") {
+              divNome.innerHTML = `<div style="margin-top: 15px; font-size: 20px;">NÚMERO ERRADO</div><div style="font-size: 28px; font-weight: bold; margin-top: 5px;">VOTO NULO</div>`;
+            } else if (data.nome) {
+              divNome.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 15px;">
+                            <div>
+                                <strong>Nome:</strong> ${data.nome} <br>
+                                <strong>Partido:</strong> ${data.partido}
+                            </div>
+                            <div style="border: 2px solid #333; width: 90px; height: 110px; background-color: #fff; margin-left: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.2); border-radius: 4px; overflow: hidden;">
+                                <img src="/static/${data.foto}" alt="Foto" style="width: 100%; height: 100%; object-fit: cover;">
+                            </div>
+                        </div>
+                    `;
+            }
+          })
+          .catch((err) => (divNome.innerHTML = "Erro ao buscar candidato."));
       }
-    }
 
-    function atualizarDisplay() {
-      let etapa = etapas[etapaAtual];
-      for(let i = 0; i < etapa.digitos; i++) {
-        let span = document.getElementById(`digito${i}`);
-        if(span) span.innerText = voto[i] || "_";
-      }
-    }
-
-    function votarBranco() { 
-      if(urnaBloqueada) return;
-      voto = "BRANCO"; 
-      document.getElementById('display-numeros').innerHTML = "<div style='font-size: 32px; font-weight: bold; margin-top: 20px;'>VOTO EM BRANCO</div>";
-      document.getElementById('dados-candidato').innerHTML = "";
-      document.getElementById('foto-container').style.display = 'none';
-      document.getElementById('rodape-tela').style.display = 'block';
-    }
-
-    function confirmar() { 
-      if(urnaBloqueada) return;
-
-      let etapa = etapas[etapaAtual];
-      if (voto.length === etapa.digitos || voto === "BRANCO") {
-        votosSalvos[etapa.titulo] = voto;
-        etapaAtual++;
-        
-        if (etapaAtual < etapas.length) {
+      function corrigir() {
+        if (urnaBloqueada) return;
+        voto = "";
+        document.getElementById("nome-candidato").innerHTML = "";
+        if (
+          document.getElementById("display-numeros").innerText ===
+          "VOTO EM BRANCO"
+        ) {
           iniciarEtapa();
         } else {
-          finalizarVotacao();
+          atualizarDisplay();
         }
-      } else {
-        alert("Preencha todos os dígitos ou vote em BRANCO antes de confirmar.");
       }
-    }
 
-   function finalizarVotacao() {
-      urnaBloqueada = true;
-      
-      document.getElementById('tela-votacao').innerHTML = `
+      function atualizarDisplay() {
+        let etapa = etapas[etapaAtual];
+        for (let i = 0; i < etapa.digitos; i++) {
+          let span = document.getElementById(`digito${i}`);
+          if (span) span.innerText = voto[i] || "_";
+        }
+      }
+
+      function votarBranco() {
+        if (urnaBloqueada) return;
+        voto = "BRANCO";
+        document.getElementById("display-numeros").innerHTML = "VOTO EM BRANCO";
+      }
+
+      function confirmar() {
+        if (urnaBloqueada) return;
+
+        let etapa = etapas[etapaAtual];
+        if (voto.length === etapa.digitos || voto === "BRANCO") {
+          votosSalvos[etapa.titulo] = voto;
+          etapaAtual++;
+
+          if (etapaAtual < etapas.length) {
+            iniciarEtapa();
+          } else {
+            finalizarVotacao();
+          }
+        } else {
+          alert(
+            "Preencha todos os dígitos ou vote em BRANCO antes de confirmar.",
+          );
+        }
+      }
+
+      function finalizarVotacao() {
+        urnaBloqueada = true;
+
+        document.getElementById("tela-votacao").innerHTML = `
         <div style="font-size: 40px; text-align: center; margin-top: 40px; font-weight: bold;">FIM</div>
       `;
-      
-      const payload = {
-        eleitor: tituloEleitorSessao,
-        votos: votosSalvos
-      };
-      
-      fetch('/votar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-      .then(response => response.json())
-      .then(data => {
-         if(data.erro) {
-             alert("Erro: " + data.erro);
-         } else {
-             socket.emit('urna_bloqueada');
-             
-             setTimeout(() => {
-                document.getElementById('tela-bloqueio').style.display = 'flex';
-                document.getElementById('tela-votacao').innerHTML = `
-                  <!-- Estrutura resetada pelo socket liberador depois -->
+
+        const payload = {
+          eleitor: tituloEleitorSessao,
+          votos: votosSalvos,
+        };
+
+        fetch("/votar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.erro) {
+              alert("Erro: " + data.erro);
+            } else {
+              socket.emit("urna_bloqueada");
+
+              setTimeout(() => {
+                document.getElementById("tela-bloqueio").style.display = "flex";
+                document.getElementById("tela-votacao").innerHTML = `
+                  <p>Cargo: <strong id="nome-cargo">...</strong></p>
+                  <div class="numero-display" id="display-numeros"></div>
+                  <div id="nome-candidato"></div>
                 `;
-             }, 3000);
-         }
-      })
-      .catch(err => console.error("Erro ao computar voto:", err));
-    }
-  </script>
-</body>
+              }, 3000);
+            }
+          })
+          .catch((err) => console.error("Erro ao computar voto:", err));
+      }
+    </script>
+  </body>
 </html>
