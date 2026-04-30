@@ -169,7 +169,6 @@ def buscar_candidato():
         
         id_cargo = cargo_db[0]
 
-        # QUERY ATUALIZADA AQUI (adicionei c.foto_url)
         query = text("""
             SELECT c.nome_candidato, p.sigla, c.foto_url 
             FROM candidato c
@@ -180,7 +179,6 @@ def buscar_candidato():
         candidato_db = connection.execute(query, {"numero": numero, "id_cargo": id_cargo}).fetchone()
 
         if candidato_db:
-            # RETORNO ATUALIZADO AQUI (adicionei "foto")
             return jsonify({
                 "nome": candidato_db[0],
                 "partido": candidato_db[1],
@@ -223,8 +221,8 @@ def relatorio():
             {"id_urna": id_urna_atual}
         ).fetchone()
 
-        # Nota: O código abaixo do return original ficará inacessível na execução, 
-        # mas foi mantido e alinhado conforme solicitado.
+        # Nota: O código abaixo deste return original ficará inacessível na execução.
+        # Caso queira que o PDF seja gerado, remova este return jsonify(...) e deixe o fluxo continuar.
         return jsonify({
             "id_urna": urna_data[0] if urna_data else id_urna_atual,
             "anomes": urna_data[1] if urna_data else None,
