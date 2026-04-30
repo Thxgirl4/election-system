@@ -230,91 +230,82 @@ def relatorio():
             {"id_urna": id_urna_atual}
         ).fetchone()
 
-        return jsonify({
-            "id_urna": urna_data[0] if urna_data else id_urna_atual,
-            "anomes": urna_data[1] if urna_data else None,
-            "votos_validos": int(votos_count[0]) if votos_count else 0,
-            "votos_brancos": int(votos_count[1]) if votos_count else 0,
-            "votos_nulos": int(votos_count[2]) if votos_count else 0,
-            "total_votos": int(votos_count[3]) if votos_count else 0
-        })
-
-            print(votos_count)
-            
-            # Gera PDF com dados da urna
-            buffer = BytesIO()
-            pdf = canvas.Canvas(buffer, pagesize=A4)
-            width, height = A4
-            
-            margin_left = 50
-            margin_right = 50
-            y_pos = height - 50
-            
-            # Título
-            pdf.setFont("Helvetica-Bold", 18)
-            pdf.drawCentredString(width / 2, y_pos, "Relatório da Urna - Zerésima")
-            
-            y_pos -= 40
-            
-            # Informações gerais
-            pdf.setFont("Helvetica", 11)
-            pdf.drawString(margin_left, y_pos, f"Data/Hora: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+        print(votos_count)
+        
+        # Gera PDF com dados da urna
+        buffer = BytesIO()
+        pdf = canvas.Canvas(buffer, pagesize=A4)
+        width, height = A4
+        
+        margin_left = 50
+        margin_right = 50
+        y_pos = height - 50
+        
+        # Título
+        pdf.setFont("Helvetica-Bold", 18)
+        pdf.drawCentredString(width / 2, y_pos, "Relatório da Urna - Zerésima")
+        
+        y_pos -= 40
+        
+        # Informações gerais
+        pdf.setFont("Helvetica", 11)
+        pdf.drawString(margin_left, y_pos, f"Data/Hora: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+        y_pos -= 18
+        pdf.drawString(margin_left, y_pos, f"ID da Urna: {id_urna_atual}")
+        
+        y_pos -= 35
+        
+        # Dados da Urna
+        if urna_data:
+            pdf.setFont("Helvetica-Bold", 12)
+            pdf.drawString(margin_left, y_pos, "Dados da Urna:")
             y_pos -= 18
-            pdf.drawString(margin_left, y_pos, f"ID da Urna: {id_urna_atual}")
             
-            y_pos -= 35
-            
-            # Dados da Urna
-            if urna_data:
-                pdf.setFont("Helvetica-Bold", 12)
-                pdf.drawString(margin_left, y_pos, "Dados da Urna:")
-                y_pos -= 18
-                
-                pdf.setFont("Helvetica", 11)
-                pdf.drawString(margin_left + 20, y_pos, f"ID: {urna_data[0]}")
-                y_pos -= 16
-                pdf.drawString(margin_left + 20, y_pos, f"Ano/Mês: {urna_data[1]}")
-                
-                y_pos -= 30
-                
-                # Contagem de Votos
-                pdf.setFont("Helvetica-Bold", 12)
-                pdf.drawString(margin_left, y_pos, "Contagem de Votos:")
-                y_pos -= 18
-                
-                pdf.setFont("Helvetica", 11)
-                pdf.drawString(margin_left + 20, y_pos, f"Votos Válidos: {votos_count[0]}")
-                y_pos -= 16
-                pdf.drawString(margin_left + 20, y_pos, f"Votos em Branco: {votos_count[1]}")
-                y_pos -= 16
-                pdf.drawString(margin_left + 20, y_pos, f"Votos Nulos: {votos_count[2]}")
-                y_pos -= 16
-                pdf.drawString(margin_left + 20, y_pos, f"Total de Votos: {votos_count[3]}")
-            else:
-                pdf.setFont("Helvetica", 11)
-                pdf.drawString(margin_left, y_pos, "Urna não encontrada no sistema.")
-            
-            y_pos -= 50
-            
-            # Observações finais
             pdf.setFont("Helvetica", 11)
-            pdf.drawString(margin_left, y_pos, "Todos os votos desta urna foram zerados.")
+            pdf.drawString(margin_left + 20, y_pos, f"ID: {urna_data[0]}")
             y_pos -= 16
-            pdf.drawString(margin_left, y_pos, "A urna está pronta para receber novos votos.")
+            pdf.drawString(margin_left + 20, y_pos, f"Ano/Mês: {urna_data[1]}")
             
             y_pos -= 30
             
-            # Rodapé 
-            pdf.setFont("Helvetica-Oblique", 10)
-            pdf.drawCentredString(width / 2, y_pos, "Tribunal Regional do TADS")
+            # Contagem de Votos
+            pdf.setFont("Helvetica-Bold", 12)
+            pdf.drawString(margin_left, y_pos, "Contagem de Votos:")
+            y_pos -= 18
             
-            pdf.save()
-            buffer.seek(0)
-            
-            response = make_response(buffer.getvalue())
-            response.headers['Content-Type'] = 'application/pdf'
-            response.headers['Content-Disposition'] = f'inline; filename=zeresima_urna_{id_urna_atual}.pdf'
-            return response
+            pdf.setFont("Helvetica", 11)
+            pdf.drawString(margin_left + 20, y_pos, f"Votos Válidos: {votos_count[0]}")
+            y_pos -= 16
+            pdf.drawString(margin_left + 20, y_pos, f"Votos em Branco: {votos_count[1]}")
+            y_pos -= 16
+            pdf.drawString(margin_left + 20, y_pos, f"Votos Nulos: {votos_count[2]}")
+            y_pos -= 16
+            pdf.drawString(margin_left + 20, y_pos, f"Total de Votos: {votos_count[3]}")
+        else:
+            pdf.setFont("Helvetica", 11)
+            pdf.drawString(margin_left, y_pos, "Urna não encontrada no sistema.")
+        
+        y_pos -= 50
+        
+        # Observações finais
+        pdf.setFont("Helvetica", 11)
+        pdf.drawString(margin_left, y_pos, "Todos os votos desta urna foram zerados.")
+        y_pos -= 16
+        pdf.drawString(margin_left, y_pos, "A urna está pronta para receber novos votos.")
+        
+        y_pos -= 30
+        
+        # Rodapé 
+        pdf.setFont("Helvetica-Oblique", 10)
+        pdf.drawCentredString(width / 2, y_pos, "Tribunal Regional do TADS")
+        
+        pdf.save()
+        buffer.seek(0)
+        
+        response = make_response(buffer.getvalue())
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=zeresima_urna_{id_urna_atual}.pdf'
+        return response
 
 # rota para gerar relatório de encerramento
 @app.route("/relatorio_final", methods=["GET"])

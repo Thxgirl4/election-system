@@ -209,4 +209,4 @@ INSERT INTO voto (hash, id_cargo, id_urna) VALUES
 
 ALTER TABLE voto ADD COLUMN id_candidato INT NULL;
 ALTER TABLE voto ADD COLUMN tipo_voto VARCHAR(10) DEFAULT 'VALIDO';
-ALTER TABLE voto ADD CONSTRAINT fk_voto_candidato FOREIGN KEY (id_candidato) REFERENCES candidato(id_candidato);
+ALTER TABLE voto ADD CONSTRAINT fk_voto_candidato FOREIGN KEY (id_candidato) REFERENCES candidato(id_candidato);    
