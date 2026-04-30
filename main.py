@@ -169,19 +169,22 @@ def buscar_candidato():
         
         id_cargo = cargo_db[0]
 
+        # QUERY ATUALIZADA AQUI (adicionei c.foto_url)
         query = text("""
-            SELECT c.nome_candidato, p.sigla 
+            SELECT c.nome_candidato, p.sigla, c.foto_url 
             FROM candidato c
             JOIN partido p ON c.id_partido = p.num_partido
-            WHERE c.id_partido = :numero AND c.id_cargo = :id_cargo
+            WHERE c.numero_urna = :numero AND c.id_cargo = :id_cargo
         """)
         
         candidato_db = connection.execute(query, {"numero": numero, "id_cargo": id_cargo}).fetchone()
 
         if candidato_db:
+            # RETORNO ATUALIZADO AQUI (adicionei "foto")
             return jsonify({
                 "nome": candidato_db[0],
-                "partido": candidato_db[1]
+                "partido": candidato_db[1],
+                "foto": candidato_db[2] 
             }), 200
         else:
             return jsonify({"nome": "VOTO NULO"}), 404
