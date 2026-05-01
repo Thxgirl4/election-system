@@ -9,6 +9,13 @@ from io import BytesIO
 from reportlab.pdfgen import canvas
 from datetime import datetime
 from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import cm, inch
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageTemplate, Frame, Image
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 import hashlib
 import json
 
@@ -34,7 +41,401 @@ def gerar_hash_id(voto_id):
     hash_obj = hashlib.sha256(voto_id.encode('utf-8'))
     return hash_obj.hexdigest()[:100] 
 
-################################ ROTAS ################################
+################################ CLASSES PARA GERAÇÃO DE PDFs ################################
+
+class ZeroeximaPDF:
+    """Gera PDF da Zerésima da Urna com layout profissional."""
+    
+    def __init__(self, numero_urna, secao, zona, municipio, estado="SP"):
+        self.numero_urna = numero_urna
+        self.secao = secao
+        self.zona = zona
+        self.municipio = municipio
+        self.estado = estado
+        self.data_hora = datetime.now().strftime("%d/%m/%Y às %H:%M:%S")
+    
+    def _criar_estilos(self):
+        """Define estilos de parágrafo."""
+        styles = getSampleStyleSheet()
+        
+        titulo_style = ParagraphStyle(
+            'CustomTitulo',
+            parent=styles['Heading1'],
+            fontSize=18,
+            textColor=colors.HexColor('#003366'),
+            spaceAfter=12,
+            alignment=TA_CENTER,
+            fontName='Helvetica-Bold'
+        )
+        
+        subtitulo_style = ParagraphStyle(
+            'CustomSubtitulo',
+            parent=styles['Heading2'],
+            fontSize=12,
+            textColor=colors.HexColor('#666666'),
+            spaceAfter=6,
+            alignment=TA_CENTER,
+            fontName='Helvetica'
+        )
+        
+        normal_style = ParagraphStyle(
+            'CustomNormal',
+            parent=styles['Normal'],
+            fontSize=10,
+            textColor=colors.HexColor('#333333'),
+            spaceAfter=4,
+            alignment=TA_LEFT
+        )
+        
+        centrado_style = ParagraphStyle(
+            'CustomCentrado',
+            parent=styles['Normal'],
+            fontSize=10,
+            textColor=colors.HexColor('#333333'),
+            spaceAfter=4,
+            alignment=TA_CENTER
+        )
+        
+        return {
+            'titulo': titulo_style,
+            'subtitulo': subtitulo_style,
+            'normal': normal_style,
+            'centrado': centrado_style
+        }
+    
+    def _criar_cabecalho(self, estilos):
+        """Cria cabeçalho do documento."""
+        elementos = []
+        elementos.append(Paragraph("JUSTIÇA ELEITORAL", estilos['subtitulo']))
+        elementos.append(Spacer(1, 0.3*cm))
+        elementos.append(Paragraph("ZERÉSIMA DA URNA ELETRÔNICA", estilos['titulo']))
+        elementos.append(Spacer(1, 0.3*cm))
+        elementos.append(Paragraph(f"Data: {self.data_hora}", estilos['centrado']))
+        elementos.append(Spacer(1, 0.5*cm))
+        return elementos
+    
+    def _criar_tabela_informacoes(self, estilos):
+        """Cria tabela com informações da urna."""
+        dados = [
+            [Paragraph("<b>Número da Urna:</b>", estilos['normal']), 
+             Paragraph(self.numero_urna, estilos['normal'])],
+            [Paragraph("<b>Seção:</b>", estilos['normal']), 
+             Paragraph(self.secao, estilos['normal'])],
+            [Paragraph("<b>Zona:</b>", estilos['normal']), 
+             Paragraph(self.zona, estilos['normal'])],
+            [Paragraph("<b>Município:</b>", estilos['normal']), 
+             Paragraph(self.municipio, estilos['normal'])],
+            [Paragraph("<b>Estado:</b>", estilos['normal']), 
+             Paragraph(self.estado, estilos['normal'])],
+        ]
+        
+        tabela = Table(dados, colWidths=[4*cm, 8*cm])
+        tabela.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#F5F5F5')),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#CCCCCC')),
+        ]))
+        return tabela
+    
+    def _criar_tabela_candidatos(self, candidatos, estilos):
+        """Cria tabela de candidatos com votos zerados."""
+        dados = [
+            [Paragraph("<b>Número</b>", estilos['centrado']), 
+             Paragraph("<b>Nome</b>", estilos['centrado']),
+             Paragraph("<b>Partido</b>", estilos['centrado']),
+             Paragraph("<b>Cargo</b>", estilos['centrado']),
+             Paragraph("<b>Votos</b>", estilos['centrado'])]
+        ]
+        
+        for cand in (candidatos or []):
+            dados.append([
+                Paragraph(str(cand.get('numero', '')), estilos['centrado']),
+                Paragraph(cand.get('nome', 'N/A'), estilos['normal']),
+                Paragraph(cand.get('partido', 'N/A'), estilos['centrado']),
+                Paragraph(cand.get('cargo', 'N/A'), estilos['normal']),
+                Paragraph("0", estilos['centrado'])
+            ])
+        
+        tabela = Table(dados, colWidths=[1.5*cm, 5*cm, 2.5*cm, 2.5*cm, 1.5*cm])
+        tabela.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#003366')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F5F5F5')]),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#CCCCCC')),
+        ]))
+        return tabela
+    
+    def _criar_rodape(self, estilos):
+        """Cria rodapé com assinatura."""
+        elementos = []
+        elementos.append(Spacer(1, 0.5*cm))
+        elementos.append(Paragraph(
+            "Declaramos que a urna foi zerada antes da votação, com todos os candidatos apresentando zero votos.",
+            estilos['normal']
+        ))
+        elementos.append(Spacer(1, 0.8*cm))
+        
+        # Tabela de assinatura
+        dados_assinatura = [
+            [Paragraph("_______________________", estilos['centrado']),
+             Paragraph("_______________________", estilos['centrado']),
+             Paragraph("_______________________", estilos['centrado'])],
+            [Paragraph("<b>Mesário 1</b>", estilos['centrado']),
+             Paragraph("<b>Mesário 2</b>", estilos['centrado']),
+             Paragraph("<b>Observador</b>", estilos['centrado'])]
+        ]
+        
+        tabela_assinatura = Table(dados_assinatura, colWidths=[4*cm, 4*cm, 4*cm])
+        tabela_assinatura.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('TOPPADDING', (0, 0), (-1, -1), 12),
+        ]))
+        elementos.append(tabela_assinatura)
+        return elementos
+    
+    def gerar(self, candidatos=None):
+        """Gera o PDF em memória."""
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=1.5*cm, bottomMargin=1.5*cm, 
+                                leftMargin=1.5*cm, rightMargin=1.5*cm)
+        
+        estilos = self._criar_estilos()
+        elementos = []
+        
+        # Cabeçalho
+        elementos.extend(self._criar_cabecalho(estilos))
+        
+        # Informações da urna
+        elementos.append(self._criar_tabela_informacoes(estilos))
+        elementos.append(Spacer(1, 0.5*cm))
+        
+        # Tabela de candidatos
+        elementos.append(Paragraph("<b>Candidatos - Votos Zerados</b>", estilos['subtitulo']))
+        elementos.append(Spacer(1, 0.3*cm))
+        elementos.append(self._criar_tabela_candidatos(candidatos, estilos))
+        
+        # Rodapé
+        elementos.extend(self._criar_rodape(estilos))
+        
+        doc.build(elementos)
+        buffer.seek(0)
+        return buffer
+
+
+class BoletimPDF:
+    """Gera PDF do Boletim da Urna com resultado dos votos."""
+    
+    def __init__(self, numero_urna, secao, zona, municipio, estado="SP"):
+        self.numero_urna = numero_urna
+        self.secao = secao
+        self.zona = zona
+        self.municipio = municipio
+        self.estado = estado
+        self.data_hora = datetime.now().strftime("%d/%m/%Y às %H:%M:%S")
+    
+    def _criar_estilos(self):
+        """Define estilos de parágrafo."""
+        styles = getSampleStyleSheet()
+        
+        titulo_style = ParagraphStyle(
+            'CustomTitulo',
+            parent=styles['Heading1'],
+            fontSize=18,
+            textColor=colors.HexColor('#003366'),
+            spaceAfter=12,
+            alignment=TA_CENTER,
+            fontName='Helvetica-Bold'
+        )
+        
+        subtitulo_style = ParagraphStyle(
+            'CustomSubtitulo',
+            parent=styles['Heading2'],
+            fontSize=12,
+            textColor=colors.HexColor('#666666'),
+            spaceAfter=6,
+            alignment=TA_CENTER,
+            fontName='Helvetica'
+        )
+        
+        normal_style = ParagraphStyle(
+            'CustomNormal',
+            parent=styles['Normal'],
+            fontSize=10,
+            textColor=colors.HexColor('#333333'),
+            spaceAfter=4,
+            alignment=TA_LEFT
+        )
+        
+        centrado_style = ParagraphStyle(
+            'CustomCentrado',
+            parent=styles['Normal'],
+            fontSize=10,
+            textColor=colors.HexColor('#333333'),
+            spaceAfter=4,
+            alignment=TA_CENTER
+        )
+        
+        return {
+            'titulo': titulo_style,
+            'subtitulo': subtitulo_style,
+            'normal': normal_style,
+            'centrado': centrado_style
+        }
+    
+    def _criar_cabecalho(self, estilos):
+        """Cria cabeçalho do documento."""
+        elementos = []
+        elementos.append(Paragraph("JUSTIÇA ELEITORAL", estilos['subtitulo']))
+        elementos.append(Spacer(1, 0.3*cm))
+        elementos.append(Paragraph("BOLETIM DE URNA", estilos['titulo']))
+        elementos.append(Spacer(1, 0.3*cm))
+        elementos.append(Paragraph(f"Data: {self.data_hora}", estilos['centrado']))
+        elementos.append(Spacer(1, 0.5*cm))
+        return elementos
+    
+    def _criar_tabela_informacoes(self, estilos):
+        """Cria tabela com informações da urna."""
+        dados = [
+            [Paragraph("<b>Número da Urna:</b>", estilos['normal']), 
+             Paragraph(self.numero_urna, estilos['normal'])],
+            [Paragraph("<b>Seção:</b>", estilos['normal']), 
+             Paragraph(self.secao, estilos['normal'])],
+            [Paragraph("<b>Zona:</b>", estilos['normal']), 
+             Paragraph(self.zona, estilos['normal'])],
+            [Paragraph("<b>Município:</b>", estilos['normal']), 
+             Paragraph(self.municipio, estilos['normal'])],
+            [Paragraph("<b>Estado:</b>", estilos['normal']), 
+             Paragraph(self.estado, estilos['normal'])],
+        ]
+        
+        tabela = Table(dados, colWidths=[4*cm, 8*cm])
+        tabela.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#F5F5F5')),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#CCCCCC')),
+        ]))
+        return tabela
+    
+    def _criar_tabela_resultado(self, votos_por_candidato, estilos):
+        """Cria tabela com resultado dos votos."""
+        dados = [
+            [Paragraph("<b>Número</b>", estilos['centrado']), 
+             Paragraph("<b>Nome</b>", estilos['centrado']),
+             Paragraph("<b>Partido</b>", estilos['centrado']),
+             Paragraph("<b>Cargo</b>", estilos['centrado']),
+             Paragraph("<b>Votos</b>", estilos['centrado'])]
+        ]
+        
+        for cand in (votos_por_candidato or []):
+            dados.append([
+                Paragraph(str(cand.get('numero', '')), estilos['centrado']),
+                Paragraph(cand.get('nome', 'N/A'), estilos['normal']),
+                Paragraph(cand.get('partido', 'N/A'), estilos['centrado']),
+                Paragraph(cand.get('cargo', 'N/A'), estilos['normal']),
+                Paragraph(str(cand.get('votos', 0)), estilos['centrado'])
+            ])
+        
+        # Linha de totais
+        total_votos = sum(int(cand.get('votos', 0)) for cand in (votos_por_candidato or []))
+        dados.append([
+            Paragraph("", estilos['centrado']),
+            Paragraph("", estilos['normal']),
+            Paragraph("", estilos['centrado']),
+            Paragraph("<b>TOTAL:</b>", estilos['centrado']),
+            Paragraph(f"<b>{total_votos}</b>", estilos['centrado'])
+        ])
+        
+        tabela = Table(dados, colWidths=[1.5*cm, 5*cm, 2.5*cm, 2.5*cm, 1.5*cm])
+        tabela.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#003366')),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#CCCCCC')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('TEXTCOLOR', (0, -1), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#F5F5F5')]),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#CCCCCC')),
+        ]))
+        return tabela
+    
+    def _criar_rodape(self, estilos):
+        """Cria rodapé com assinatura."""
+        elementos = []
+        elementos.append(Spacer(1, 0.5*cm))
+        elementos.append(Paragraph(
+            "Certificamos que os votos contabilizados acima correspondem aos registros da urna eletrônica.",
+            estilos['normal']
+        ))
+        elementos.append(Spacer(1, 0.8*cm))
+        
+        # Tabela de assinatura
+        dados_assinatura = [
+            [Paragraph("_______________________", estilos['centrado']),
+             Paragraph("_______________________", estilos['centrado']),
+             Paragraph("_______________________", estilos['centrado'])],
+            [Paragraph("<b>Mesário 1</b>", estilos['centrado']),
+             Paragraph("<b>Mesário 2</b>", estilos['centrado']),
+             Paragraph("<b>Observador</b>", estilos['centrado'])]
+        ]
+        
+        tabela_assinatura = Table(dados_assinatura, colWidths=[4*cm, 4*cm, 4*cm])
+        tabela_assinatura.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('TOPPADDING', (0, 0), (-1, -1), 12),
+        ]))
+        elementos.append(tabela_assinatura)
+        return elementos
+    
+    def gerar(self, votos_por_candidato=None):
+        """Gera o PDF em memória."""
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=1.5*cm, bottomMargin=1.5*cm,
+                                leftMargin=1.5*cm, rightMargin=1.5*cm)
+        
+        estilos = self._criar_estilos()
+        elementos = []
+        
+        # Cabeçalho
+        elementos.extend(self._criar_cabecalho(estilos))
+        
+        # Informações da urna
+        elementos.append(self._criar_tabela_informacoes(estilos))
+        elementos.append(Spacer(1, 0.5*cm))
+        
+        # Tabela de resultado
+        elementos.append(Paragraph("<b>Resultado dos Votos</b>", estilos['subtitulo']))
+        elementos.append(Spacer(1, 0.3*cm))
+        elementos.append(self._criar_tabela_resultado(votos_por_candidato, estilos))
+        
+        # Rodapé
+        elementos.extend(self._criar_rodape(estilos))
+        
+        doc.build(elementos)
+        buffer.seek(0)
+        return buffer
 
 @app.route("/")
 def index():
@@ -170,10 +571,10 @@ def buscar_candidato():
         id_cargo = cargo_db[0]
 
         query = text("""
-            SELECT c.nome_candidato, p.sigla 
+            SELECT c.nome_candidato, p.sigla, c.foto_url 
             FROM candidato c
             JOIN partido p ON c.id_partido = p.num_partido
-            WHERE c.id_partido = :numero AND c.id_cargo = :id_cargo
+            WHERE c.numero_urna = :numero AND c.id_cargo = :id_cargo
         """)
         
         candidato_db = connection.execute(query, {"numero": numero, "id_cargo": id_cargo}).fetchone()
@@ -181,7 +582,8 @@ def buscar_candidato():
         if candidato_db:
             return jsonify({
                 "nome": candidato_db[0],
-                "partido": candidato_db[1]
+                "partido": candidato_db[1],
+                "foto": candidato_db[2] 
             }), 200
         else:
             return jsonify({"nome": "VOTO NULO"}), 404
@@ -197,6 +599,122 @@ def votacao():
             connection.commit()
     
     return render_template("votacao.html")
+
+@app.route("/zeroesima", methods=["GET"])
+def zeroesima():
+    """Gera e retorna a Zerésima da Urna em PDF."""
+    try:
+        id_urna = request.args.get("id_urna", 1, type=int)
+        
+        with engine.connect() as connection:
+            # Buscar dados da urna (a tabela urna_eleicao tem apenas id_urna e anomes)
+            urna_query = text("SELECT id_urna FROM urna_eleicao WHERE id_urna = :id_urna LIMIT 1")
+            urna_data = connection.execute(urna_query, {"id_urna": id_urna}).fetchone()
+            
+            if not urna_data:
+                return jsonify({"erro": "Urna não encontrada"}), 404
+            
+            # Usando valores padrão para os dados da urna (podem ser customizados conforme necessário)
+            numero_urna = str(id_urna)
+            secao = "0001"  # Seção padrão
+            zona = "001"    # Zona padrão
+            municipio = "São Paulo"  # Município padrão
+            estado = "SP"   # Estado padrão
+            
+            # Buscar candidatos
+            candidatos_query = text("""
+                SELECT c.id_candidato, c.nome_candidato, p.sigla, ca.nome_cargo
+                FROM candidato c
+                JOIN partido p ON c.id_partido = p.num_partido
+                JOIN cargo ca ON c.id_cargo = ca.id_cargo
+                ORDER BY ca.nome_cargo, c.id_candidato
+            """)
+            candidatos_result = connection.execute(candidatos_query).fetchall()
+            
+            candidatos = []
+            for cand in candidatos_result:
+                candidatos.append({
+                    "numero": str(cand[0]).zfill(4),  # Usa ID do candidato como número, preenchido com zeros
+                    "nome": cand[1] or "Sem nome",
+                    "partido": cand[2] or "S/P",
+                    "cargo": cand[3] or "Sem cargo"
+                })
+        
+        # Gerar PDF
+        pdf_gen = ZeroeximaPDF(numero_urna, secao, zona, municipio, estado)
+        pdf_buffer = pdf_gen.gerar(candidatos=candidatos)
+        
+        # Retornar PDF
+        response = make_response(pdf_buffer.getvalue())
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=zeroesima_urna_{numero_urna}.pdf'
+        return response
+        
+    except Exception as e:
+        print(f"Erro ao gerar Zerésima: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"erro": f"Erro ao gerar PDF: {str(e)}"}), 500
+
+@app.route("/boletim", methods=["GET"])
+def boletim():
+    """Gera e retorna o Boletim da Urna em PDF."""
+    try:
+        id_urna = request.args.get("id_urna", 1, type=int)
+        
+        with engine.connect() as connection:
+            # Buscar dados da urna
+            urna_query = text("SELECT id_urna FROM urna_eleicao WHERE id_urna = :id_urna LIMIT 1")
+            urna_data = connection.execute(urna_query, {"id_urna": id_urna}).fetchone()
+            
+            if not urna_data:
+                return jsonify({"erro": "Urna não encontrada"}), 404
+            
+            # Usando valores padrão para os dados da urna
+            numero_urna = str(id_urna)
+            secao = "0001"  # Seção padrão
+            zona = "001"    # Zona padrão
+            municipio = "São Paulo"  # Município padrão
+            estado = "SP"   # Estado padrão
+            
+            # Buscar votos por candidato
+            votos_query = text("""
+                SELECT c.id_candidato, c.nome_candidato, p.sigla, ca.nome_cargo, COUNT(*) as votos
+                FROM voto v
+                LEFT JOIN candidato c ON v.id_candidato = c.id_candidato
+                LEFT JOIN partido p ON c.id_partido = p.num_partido
+                LEFT JOIN cargo ca ON v.id_cargo = ca.id_cargo
+                WHERE v.id_urna = :id_urna AND v.tipo_voto = 'VALIDO'
+                GROUP BY c.id_candidato, c.nome_candidato, p.sigla, ca.nome_cargo
+                ORDER BY ca.nome_cargo, c.id_candidato
+            """)
+            votos_result = connection.execute(votos_query, {"id_urna": id_urna}).fetchall()
+            
+            votos_por_candidato = []
+            for voto in votos_result:
+                votos_por_candidato.append({
+                    "numero": str(voto[0]).zfill(4) if voto[0] else "BRANCO",  # Usa ID como número
+                    "nome": voto[1] or "Voto em Branco",
+                    "partido": voto[2] or "N/A",
+                    "cargo": voto[3] or "N/A",
+                    "votos": voto[4]
+                })
+        
+        # Gerar PDF
+        pdf_gen = BoletimPDF(numero_urna, secao, zona, municipio, estado)
+        pdf_buffer = pdf_gen.gerar(votos_por_candidato=votos_por_candidato)
+        
+        # Retornar PDF
+        response = make_response(pdf_buffer.getvalue())
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=boletim_urna_{numero_urna}.pdf'
+        return response
+        
+    except Exception as e:
+        print(f"Erro ao gerar Boletim: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"erro": f"Erro ao gerar PDF: {str(e)}"}), 500
 
 @app.route("/relatorio", methods=["GET"])
 def relatorio():
@@ -220,8 +738,8 @@ def relatorio():
             {"id_urna": id_urna_atual}
         ).fetchone()
 
-        # Nota: O código abaixo do return original ficará inacessível na execução, 
-        # mas foi mantido e alinhado conforme solicitado.
+        # Nota: O código abaixo deste return original ficará inacessível na execução.
+        # Caso queira que o PDF seja gerado, remova este return jsonify(...) e deixe o fluxo continuar.
         return jsonify({
             "id_urna": urna_data[0] if urna_data else id_urna_atual,
             "anomes": urna_data[1] if urna_data else None,
