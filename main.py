@@ -95,6 +95,15 @@ def votar():
     votos = data.get("votos") 
 
     with engine.begin() as connection:
+        # Verificar se a urna está encerrada
+        id_urna_atual = 1
+        urna_status = connection.execute(
+            text("SELECT status FROM urna_eleicao WHERE id_urna = :id_urna AND anomes = :anomes"),
+            {"id_urna": id_urna_atual, "anomes": ELEICAO_ATUAL}
+        ).fetchone()
+        
+        if urna_status and urna_status[0] == 'ENCERRADA':
+            return jsonify({"erro": "A urna foi encerrada e não aceita mais votos!"}), 403
         eleitor_db = connection.execute(
             text("SELECT id_eleitor FROM eleitor WHERE titulo = :titulo"),
             {"titulo": titulo_eleitor}
@@ -102,8 +111,6 @@ def votar():
 
         if not eleitor_db:
             return jsonify({"erro": "Eleitor não encontrado no sistema."}), 404
-
-        id_urna_atual = 1
 
         for nome_cargo, numero_digitado in votos.items():
             cargo_db = connection.execute(
@@ -195,6 +202,7 @@ def votacao():
         with engine.connect() as connection:
             connection.execute(text("DELETE FROM voto WHERE id_urna = :id_urna"), {"id_urna": id_urna_atual})
             connection.execute(text("DELETE FROM comparecimento WHERE anomes = :anomes"), {"anomes": ELEICAO_ATUAL})
+            connection.execute(text("UPDATE urna_eleicao SET status = 'ABERTA' WHERE id_urna = :id_urna AND anomes = :anomes"), {"id_urna": id_urna_atual, "anomes": ELEICAO_ATUAL})
             connection.commit()
     
     return render_template("votacao.html")
@@ -220,17 +228,6 @@ def relatorio():
             """),
             {"id_urna": id_urna_atual}
         ).fetchone()
-
-        # Nota: O código abaixo deste return original ficará inacessível na execução.
-        # Caso queira que o PDF seja gerado, remova este return jsonify(...) e deixe o fluxo continuar.
-        return jsonify({
-            "id_urna": urna_data[0] if urna_data else id_urna_atual,
-            "anomes": urna_data[1] if urna_data else None,
-            "votos_validos": int(votos_count[0]) if votos_count else 0,
-            "votos_brancos": int(votos_count[1]) if votos_count else 0,
-            "votos_nulos": int(votos_count[2]) if votos_count else 0,
-            "total_votos": int(votos_count[3]) if votos_count else 0
-        })
 
         print(votos_count)
         
@@ -429,8 +426,19 @@ def mesario():
 @socketio.on('mesario_libera_urna')
 def handle_liberar(data):
     titulo = data.get('titulo')
+    id_urna_atual = 1
     
     with engine.begin() as connection:
+        # Verificar se a urna foi encerrada pelo presidente
+        urna_status = connection.execute(
+            text("SELECT status FROM urna_eleicao WHERE id_urna = :id_urna AND anomes = :anomes"),
+            {"id_urna": id_urna_atual, "anomes": ELEICAO_ATUAL}
+        ).fetchone()
+        
+        if urna_status and urna_status[0] == 'ENCERRADA':
+            emit('status_mesario', {'status': 'A votação foi encerrada pelo presidente de sessão. Não é possível liberar mais urnas!', 'cor': 'red'})
+            return
+        
         query = text("""
             SELECT e.id_eleitor, e.nome, 
             (SELECT 1 FROM comparecimento c WHERE c.id_eleitor = e.id_eleitor AND c.anomes = :anomes) as ja_votou
@@ -457,11 +465,95 @@ def handle_liberar(data):
 
 @socketio.on('urna_bloqueada')
 def handle_bloquear():
+    id_urna_atual = 1
+    
+    with engine.connect() as connection:
+        # Verificar se a urna foi encerrada pelo presidente
+        urna_status = connection.execute(
+            text("SELECT status FROM urna_eleicao WHERE id_urna = :id_urna AND anomes = :anomes"),
+            {"id_urna": id_urna_atual, "anomes": ELEICAO_ATUAL}
+        ).fetchone()
+        
+        if urna_status and urna_status[0] == 'ENCERRADA':
+            emit('status_mesario', {'status': 'A votação foi encerrada pelo presidente de sessão!', 'cor': 'red'}, broadcast=True)
+            return
+    
     emit('status_mesario', {'status': 'Votação concluída. Aguardando próximo eleitor.', 'cor': 'blue'}, broadcast=True)
 
-@app.route("/encerrar_votacao")
-def encerrar_votacao():
-    return render_template("encerrar.html")
+@app.route("/login_presidente", methods=["POST"])
+def login_presidente():
+    """
+    Rota de login para o presidente de sessão.
+    Recebe usuario e senha e valida as credenciais.
+    """
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({"erro": "Dados inválidos"}), 400
+    
+    usuario = data.get("usuario")
+    senha = data.get("senha")
+    
+    if not usuario or not senha:
+        return jsonify({"erro": "Usuário e senha são obrigatórios"}), 400
+    
+    with engine.connect() as connection:
+        presidente = connection.execute(
+            text("SELECT id_presidente, nome_presidente, usuario FROM presidente_sessao WHERE usuario = :usuario AND senha = :senha"),
+            {"usuario": usuario, "senha": senha}
+        ).fetchone()
+        
+        if not presidente:
+            return jsonify({"erro": "Usuário ou senha inválidos"}), 401
+        
+        id_presidente, nome_presidente, usuario_db = presidente
+        
+        return jsonify({
+            "mensagem": "Login realizado com sucesso!",
+            "id_presidente": id_presidente,
+            "nome_presidente": nome_presidente,
+            "usuario": usuario_db
+        }), 200
+
+@app.route("/encerrar_sessao", methods=["POST"])
+def encerrar_sessao():
+    """
+    Rota para o presidente de sessão encerrar a votação.
+    Marca a urna como ENCERRADA, bloqueando-a para novos votos.
+    """
+    id_urna_atual = 1
+    
+    with engine.begin() as connection:
+        # Verificar se a urna já está encerrada
+        urna_status = connection.execute(
+            text("SELECT status FROM urna_eleicao WHERE id_urna = :id_urna AND anomes = :anomes"),
+            {"id_urna": id_urna_atual, "anomes": ELEICAO_ATUAL}
+        ).fetchone()
+        
+        if urna_status and urna_status[0] == 'ENCERRADA':
+            return jsonify({"erro": "A urna já foi encerrada anteriormente."}), 400
+        
+        # Marcar a urna como ENCERRADA
+        connection.execute(
+            text("""
+                UPDATE urna_eleicao 
+                SET status = 'ENCERRADA' 
+                WHERE id_urna = :id_urna AND anomes = :anomes
+            """),
+            {"id_urna": id_urna_atual, "anomes": ELEICAO_ATUAL}
+        )
+    
+    # Notificar todos os clientes em tempo real via SocketIO
+    socketio.emit('urna_encerrada', {
+        'mensagem': 'A votação foi encerrada pelo presidente de sessão!',
+        'urna_status': 'ENCERRADA',
+        'id_urna': id_urna_atual
+    })
+    
+    return jsonify({
+        "mensagem": "Votação encerrada com sucesso! A urna foi bloqueada.",
+        "urna_status": "ENCERRADA"
+    }), 200
 
 if __name__ == "__main__":
     socketio.run(app, debug=True)
