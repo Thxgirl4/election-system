@@ -170,10 +170,10 @@ def buscar_candidato():
         id_cargo = cargo_db[0]
 
         query = text("""
-            SELECT c.nome_candidato, p.sigla 
+            SELECT c.nome_candidato, p.sigla, c.foto_url 
             FROM candidato c
             JOIN partido p ON c.id_partido = p.num_partido
-            WHERE c.id_partido = :numero AND c.id_cargo = :id_cargo
+            WHERE c.numero_urna = :numero AND c.id_cargo = :id_cargo
         """)
         
         candidato_db = connection.execute(query, {"numero": numero, "id_cargo": id_cargo}).fetchone()
@@ -181,7 +181,8 @@ def buscar_candidato():
         if candidato_db:
             return jsonify({
                 "nome": candidato_db[0],
-                "partido": candidato_db[1]
+                "partido": candidato_db[1],
+                "foto": candidato_db[2] 
             }), 200
         else:
             return jsonify({"nome": "VOTO NULO"}), 404
@@ -220,8 +221,8 @@ def relatorio():
             {"id_urna": id_urna_atual}
         ).fetchone()
 
-        # Nota: O código abaixo do return original ficará inacessível na execução, 
-        # mas foi mantido e alinhado conforme solicitado.
+        # Nota: O código abaixo deste return original ficará inacessível na execução.
+        # Caso queira que o PDF seja gerado, remova este return jsonify(...) e deixe o fluxo continuar.
         return jsonify({
             "id_urna": urna_data[0] if urna_data else id_urna_atual,
             "anomes": urna_data[1] if urna_data else None,

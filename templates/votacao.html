@@ -1,236 +1,483 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Votação</title>
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='css/styleurna.css') }}"
-    />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-  </head>
-  <body>
-    <div class="container">
-      <h2>Urna Eletrônica</h2>
+<head>
+  <meta charset="UTF-8">
+  <title>Urna Eletrônica</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  <style>
+    * {
+        box-sizing: border-box;
+    }
 
-      <div class="urna">
-        <div class="tela">
-          <div
-            id="tela-bloqueio"
-            style="
-              position: absolute;
-              top: 0;
-              left: 0;
-              width: 100%;
-              height: 100%;
-              background-color: #222;
-              color: #fff;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              z-index: 10;
-              font-size: 20px;
-              font-weight: bold;
-              text-align: center;
-              flex-direction: column;
-            "
-          >
-            AGUARDANDO<br />LIBERAÇÃO
-          </div>
+    body {
+        background-color: #e0e0e0;
+        font-family: 'Helvetica', Arial, sans-serif;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+    }
 
-          <div class="info-candidato" id="tela-votacao">
-            <p>Cargo: <strong id="nome-cargo">Carregando...</strong></p>
-            <div class="numero-display" id="display-numeros"></div>
-            <div id="nome-candidato"></div>
-          </div>
+    .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 900px;
+    }
+
+    .urna {
+        display: flex;
+        flex-direction: row;
+        background: linear-gradient(145deg, #d6d1c4, #e6e1d4);
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.3), inset 2px 2px 5px rgba(255,255,255,0.5);
+        gap: 30px;
+        width: 100%;
+        border: 1px solid #b5b0a4;
+        align-items: flex-start;
+    }
+
+    .tela {
+        background-color: #f4f6f0;
+        flex: 1;
+        width: 100%;
+        min-width: 450px;
+        height: 400px;
+        border: 5px solid #222;
+        padding: 20px;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        box-shadow: inset 0 0 15px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    #tela-bloqueio {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background-color: #222;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        font-size: 24px;
+        font-weight: bold;
+        text-align: center;
+        flex-direction: column;
+        letter-spacing: 2px;
+    }
+
+    #tela-votacao {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        justify-content: space-between;
+    }
+
+    .cabecalho-tela {
+        font-size: 22px;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin-bottom: 20px;
+    }
+
+    .numero-display {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .numero-display span {
+        border: 2px solid #222;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 45px;
+        height: 55px;
+        font-size: 36px;
+        font-weight: bold;
+        background: #fff;
+    }
+
+    .dados-texto {
+        font-size: 18px;
+        line-height: 1.8;
+    }
+
+    .foto-container {
+        border: 3px solid #222;
+        width: 110px;
+        height: 150px;
+        background-color: #ccc;
+        margin-left: 15px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+        overflow: hidden;
+    }
+
+    .foto-container img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .rodape-tela {
+        border-top: 2px solid #222;
+        padding-top: 10px;
+        font-size: 13px;
+        font-weight: bold;
+        line-height: 1.4;
+    }
+
+    .teclado {
+        background-color: #2b2b2b;
+        padding: 25px 20px;
+        border-radius: 8px;
+        box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
+        width: 320px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .teclado::before {
+        content: "JUSTIÇA ELEITORAL";
+        display: block;
+        color: #fff;
+        font-weight: bold;
+        margin-bottom: 20px;
+        text-align: center;
+        font-size: 16px;
+        letter-spacing: 1px;
+    }
+
+    .linha {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .teclado button {
+        width: 65px;
+        height: 50px;
+        background: linear-gradient(145deg, #444, #1a1a1a);
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: bold;
+        box-shadow: 3px 3px 0px #000;
+        transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    .teclado button:active {
+        transform: translateY(3px);
+        box-shadow: 0px 0px 0px #000;
+    }
+
+    .acoes {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-top: 15px;
+        gap: 10px;
+    }
+
+    .teclado .acoes button {
+        border: none;
+        border-radius: 4px;
+        font-weight: bold;
+        text-transform: uppercase;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 3px 3px 0px #000;
+        flex: 1;
+        color: #000 !important;
+    }
+
+    .teclado .acoes .btn-branco {
+        background: #fff !important;
+        height: 45px;
+        font-size: 10px;
+    }
+
+    .teclado .acoes .btn-corrige {
+        background: #ff782e !important;
+        height: 45px;
+        font-size: 10px;
+    }
+
+    .teclado .acoes .btn-confirma {
+        background: #00ad5d !important;
+        flex: 1.2;
+        height: 55px;
+        font-size: 11px;
+    }
+
+    .teclado .acoes button:active {
+        transform: translateY(3px);
+        box-shadow: 0px 0px 0px #000;
+    }
+
+    @media (max-width: 850px) {
+        .urna {
+            flex-direction: column;
+            align-items: center;
+        }
+        .tela {
+            min-width: unset;
+        }
+        .teclado {
+            width: 100%;
+            max-width: 350px;
+        }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="urna">
+      <div class="tela">
+        
+        <div id="tela-bloqueio">
+          AGUARDANDO<br>LIBERAÇÃO
         </div>
 
-        <div class="teclado">
-          <div class="linha">
-            <button onclick="inserir(1)">1</button>
-            <button onclick="inserir(2)">2</button>
-            <button onclick="inserir(3)">3</button>
-          </div>
-          <div class="linha">
-            <button onclick="inserir(4)">4</button>
-            <button onclick="inserir(5)">5</button>
-            <button onclick="inserir(6)">6</button>
-          </div>
-          <div class="linha">
-            <button onclick="inserir(7)">7</button>
-            <button onclick="inserir(8)">8</button>
-            <button onclick="inserir(9)">9</button>
-          </div>
-          <div class="linha">
-            <button onclick="inserir(0)">0</button>
-          </div>
-          <div class="acoes">
-            <button class="btn-branco" onclick="votarBranco()">BRANCO</button>
-            <button class="btn-corrige" onclick="corrigir()">CORRIGE</button>
-            <button class="btn-confirma" onclick="confirmar()">CONFIRMA</button>
-          </div>
+        <div id="tela-votacao">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex: 1;">
+                <div style="flex: 1;">
+                    <div class="cabecalho-tela" id="nome-cargo">Carregando...</div>
+                    <div class="numero-display" id="display-numeros"></div>
+                    <div id="nome-candidato" class="dados-texto"></div>
+                </div>
+                
+                <div class="foto-container" id="foto-candidato-container" style="display: none;">
+                    <img id="foto-candidato" src="" alt="Foto">
+                </div>
+            </div>
+          
+            <div class="rodape-tela" id="rodape-instrucoes" style="display: none;">
+                Aperte a tecla:<br>
+                VERDE para CONFIRMAR<br>
+                LARANJA para CORRIGIR
+            </div>
+        </div>
+        
+      </div>
+
+      <div class="teclado">
+        <div class="linha">
+          <button onclick="inserir(1)">1</button>
+          <button onclick="inserir(2)">2</button>
+          <button onclick="inserir(3)">3</button>
+        </div>
+        <div class="linha">
+          <button onclick="inserir(4)">4</button>
+          <button onclick="inserir(5)">5</button>
+          <button onclick="inserir(6)">6</button>
+        </div>
+        <div class="linha">
+          <button onclick="inserir(7)">7</button>
+          <button onclick="inserir(8)">8</button>
+          <button onclick="inserir(9)">9</button>
+        </div>
+        <div class="linha">
+          <button onclick="inserir(0)">0</button>
+        </div>
+        <div class="acoes">
+          <button class="btn-branco" onclick="votarBranco()">BRANCO</button>
+          <button class="btn-corrige" onclick="corrigir()">CORRIGE</button>
+          <button class="btn-confirma" onclick="confirmar()">CONFIRMA</button>
         </div>
       </div>
     </div>
+  </div>
 
-    <script>
-      const socket = io();
-      let tituloEleitorSessao = "";
-      let urnaBloqueada = true;
+  <script>
+    const socket = io();
+    let tituloEleitorSessao = "";
+    let urnaBloqueada = true;
 
-      const etapas = [
-        { titulo: "Governador", digitos: 2 },
-        { titulo: "Presidente", digitos: 2 },
-      ];
-      let etapaAtual = 0;
-      let voto = "";
-      let votosSalvos = {};
+    const etapas = [
+      { titulo: 'Presidente', digitos: 2 },
+      { titulo: 'Governador', digitos: 2 }
+    ];
+    let etapaAtual = 0; 
+    let voto = "";
+    let votosSalvos = {};
 
-      socket.on("urna_destravada", function (data) {
+    socket.on('urna_destravada', function(data) {
         tituloEleitorSessao = data.titulo;
         urnaBloqueada = false;
-        document.getElementById("tela-bloqueio").style.display = "none";
-
+        document.getElementById('tela-bloqueio').style.display = 'none';
+        
         etapaAtual = 0;
         votosSalvos = {};
         iniciarEtapa();
-      });
+    });
 
-      function iniciarEtapa() {
-        let etapa = etapas[etapaAtual];
-        voto = "";
-        document.getElementById("nome-cargo").innerText = etapa.titulo;
-
-        let htmlNumeros = "";
-        for (let i = 0; i < etapa.digitos; i++) {
-          htmlNumeros += `<span id="digito${i}">_</span>`;
-        }
-        document.getElementById("display-numeros").innerHTML = htmlNumeros;
-        document.getElementById("nome-candidato").innerText = "";
+    function iniciarEtapa() {
+      let etapa = etapas[etapaAtual];
+      voto = "";
+      document.getElementById('nome-cargo').innerText = etapa.titulo;
+      document.getElementById('rodape-instrucoes').style.display = 'none';
+      document.getElementById('foto-candidato-container').style.display = 'none';
+      
+      let htmlNumeros = "";
+      for(let i = 0; i < etapa.digitos; i++) {
+        htmlNumeros += `<span id="digito${i}"></span>`;
       }
+      document.getElementById('display-numeros').innerHTML = htmlNumeros;
+      document.getElementById('nome-candidato').innerHTML = "";
+    }
 
-      function inserir(n) {
-        if (urnaBloqueada) return;
+   function inserir(n) { 
+      if(urnaBloqueada) return;
 
-        let etapa = etapas[etapaAtual];
-        if (voto.length < etapa.digitos) {
-          voto += n;
-          atualizarDisplay();
-          if (voto.length === etapa.digitos) {
+      let etapa = etapas[etapaAtual];
+      if(voto.length < etapa.digitos) { 
+        voto += n; 
+        atualizarDisplay(); 
+        if(voto.length === etapa.digitos) {
             buscarCandidato(voto, etapa.titulo);
-          }
         }
-      }
+      } 
+    }
 
-      function buscarCandidato(numeroDigitado, nomeCargo) {
-        let divNome = document.getElementById("nome-candidato");
-        divNome.innerHTML = "<em>Buscando...</em>";
+   function buscarCandidato(numeroDigitado, nomeCargo) {
+        let divNome = document.getElementById('nome-candidato');
+        divNome.innerHTML = "<em style='font-size:18px;'>Buscando...</em>"; 
+        
         fetch(`/buscar_candidato?numero=${numeroDigitado}&cargo=${nomeCargo}`)
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.nome === "VOTO NULO") {
-              divNome.innerHTML = `<div style="margin-top: 15px; font-size: 20px;">NÚMERO ERRADO</div><div style="font-size: 28px; font-weight: bold; margin-top: 5px;">VOTO NULO</div>`;
-            } else if (data.nome) {
-              divNome.innerHTML = `
-                        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 15px;">
-                            <div>
-                                <strong>Nome:</strong> ${data.nome} <br>
-                                <strong>Partido:</strong> ${data.partido}
-                            </div>
-                            <div style="border: 2px solid #333; width: 90px; height: 110px; background-color: #fff; margin-left: 10px; box-shadow: 2px 2px 5px rgba(0,0,0,0.2); border-radius: 4px; overflow: hidden;">
-                                <img src="/static/${data.foto}" alt="Foto" style="width: 100%; height: 100%; object-fit: cover;">
-                            </div>
-                        </div>
-                    `;
-            }
-          })
-          .catch((err) => (divNome.innerHTML = "Erro ao buscar candidato."));
-      }
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('rodape-instrucoes').style.display = 'block';
 
-      function corrigir() {
-        if (urnaBloqueada) return;
-        voto = "";
-        document.getElementById("nome-candidato").innerHTML = "";
-        if (
-          document.getElementById("display-numeros").innerText ===
-          "VOTO EM BRANCO"
-        ) {
+                if(data.nome === "VOTO NULO") {
+                    document.getElementById('foto-candidato-container').style.display = 'none';
+                    divNome.innerHTML = `
+                        <div style="margin-top: 10px; font-size: 22px;">NÚMERO ERRADO</div>
+                        <div style="font-size: 36px; font-weight: bold; margin-top: 15px; text-align: center; animation: piscar 1s infinite;">VOTO NULO</div>
+                        <style>@keyframes piscar { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }</style>
+                    `;
+                } else if(data.nome) {
+                    divNome.innerHTML = `
+                        <p><strong>Nome:</strong><br> ${data.nome}</p>
+                        <p><strong>Partido:</strong><br> ${data.partido}</p>
+                    `;
+                    
+                    if(data.foto) {
+                        let imgElement = document.getElementById('foto-candidato');
+                        imgElement.src = `/static/${data.foto}?t=${new Date().getTime()}`;
+                        document.getElementById('foto-candidato-container').style.display = 'flex';
+                    } else {
+                        console.log("Candidato encontrado, mas sem foto no banco.");
+                        document.getElementById('foto-candidato-container').style.display = 'none';
+                    }
+                }
+            })
+            .catch(err => {
+                console.error("Erro na busca:", err);
+                divNome.innerHTML = "Erro ao buscar candidato.";
+            });
+    }
+
+    function corrigir() { 
+      if(urnaBloqueada) return;
+      voto = ""; 
+      document.getElementById('nome-candidato').innerHTML = ""; 
+      document.getElementById('rodape-instrucoes').style.display = 'none';
+      document.getElementById('foto-candidato-container').style.display = 'none';
+
+      if (document.getElementById('display-numeros').innerText === "VOTO EM BRANCO") {
+        iniciarEtapa();
+      } else {
+        atualizarDisplay(); 
+      }
+    }
+
+    function atualizarDisplay() {
+      let etapa = etapas[etapaAtual];
+      for(let i = 0; i < etapa.digitos; i++) {
+        let span = document.getElementById(`digito${i}`);
+        if(span) span.innerText = voto[i] || "";
+      }
+    }
+
+    function votarBranco() { 
+      if(urnaBloqueada) return;
+      voto = "BRANCO"; 
+      document.getElementById('display-numeros').innerHTML = `<div style="font-size: 32px; font-weight: bold; margin-top: 10px; animation: piscar 1s infinite;">VOTO EM BRANCO</div>`;
+      document.getElementById('nome-candidato').innerHTML = "";
+      document.getElementById('foto-candidato-container').style.display = 'none';
+      document.getElementById('rodape-instrucoes').style.display = 'block';
+    }
+
+    function confirmar() { 
+      if(urnaBloqueada) return;
+
+      let etapa = etapas[etapaAtual];
+      if (voto.length === etapa.digitos || voto === "BRANCO") {
+        votosSalvos[etapa.titulo] = voto;
+        etapaAtual++;
+        
+        if (etapaAtual < etapas.length) {
           iniciarEtapa();
         } else {
-          atualizarDisplay();
+          finalizarVotacao();
         }
       }
+    }
 
-      function atualizarDisplay() {
-        let etapa = etapas[etapaAtual];
-        for (let i = 0; i < etapa.digitos; i++) {
-          let span = document.getElementById(`digito${i}`);
-          if (span) span.innerText = voto[i] || "_";
-        }
-      }
-
-      function votarBranco() {
-        if (urnaBloqueada) return;
-        voto = "BRANCO";
-        document.getElementById("display-numeros").innerHTML = "VOTO EM BRANCO";
-      }
-
-      function confirmar() {
-        if (urnaBloqueada) return;
-
-        let etapa = etapas[etapaAtual];
-        if (voto.length === etapa.digitos || voto === "BRANCO") {
-          votosSalvos[etapa.titulo] = voto;
-          etapaAtual++;
-
-          if (etapaAtual < etapas.length) {
-            iniciarEtapa();
-          } else {
-            finalizarVotacao();
-          }
-        } else {
-          alert(
-            "Preencha todos os dígitos ou vote em BRANCO antes de confirmar.",
-          );
-        }
-      }
-
-      function finalizarVotacao() {
-        urnaBloqueada = true;
-
-        document.getElementById("tela-votacao").innerHTML = `
-        <div style="font-size: 40px; text-align: center; margin-top: 40px; font-weight: bold;">FIM</div>
+   function finalizarVotacao() {
+      urnaBloqueada = true;
+      document.getElementById('rodape-instrucoes').style.display = 'none';
+      document.getElementById('foto-candidato-container').style.display = 'none';
+      document.getElementById('display-numeros').innerHTML = '';
+      document.getElementById('nome-cargo').innerText = '';
+      
+      document.getElementById('nome-candidato').innerHTML = `
+        <div style="font-size: 60px; text-align: center; margin-top: 40px; font-weight: bold; letter-spacing: 5px;">FIM</div>
       `;
-
-        const payload = {
-          eleitor: tituloEleitorSessao,
-          votos: votosSalvos,
-        };
-
-        fetch("/votar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.erro) {
-              alert("Erro: " + data.erro);
-            } else {
-              socket.emit("urna_bloqueada");
-
-              setTimeout(() => {
-                document.getElementById("tela-bloqueio").style.display = "flex";
-                document.getElementById("tela-votacao").innerHTML = `
-                  <p>Cargo: <strong id="nome-cargo">...</strong></p>
-                  <div class="numero-display" id="display-numeros"></div>
-                  <div id="nome-candidato"></div>
-                `;
-              }, 3000);
-            }
-          })
-          .catch((err) => console.error("Erro ao computar voto:", err));
-      }
-    </script>
-  </body>
+      
+      const payload = {
+        eleitor: tituloEleitorSessao,
+        votos: votosSalvos
+      };
+      
+      fetch('/votar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(response => response.json())
+      .then(data => {
+         if(data.erro) {
+             alert("Erro: " + data.erro);
+         } else {
+             socket.emit('urna_bloqueada');
+             
+             setTimeout(() => {
+                document.getElementById('tela-bloqueio').style.display = 'flex';
+                document.getElementById('nome-candidato').innerHTML = '';
+             }, 3000);
+         }
+      })
+      .catch(err => console.error("Erro ao computar voto:", err));
+    }
+  </script>
+</body>
 </html>
