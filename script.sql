@@ -87,6 +87,15 @@ CREATE TABLE IF NOT EXISTS comparecimento (
     CONSTRAINT fk_comparecimento_eleicao FOREIGN KEY (anomes) REFERENCES eleicao(anomes)
 );
 
+# criar presidente de sessão
+CREATE TABLE IF NOT EXISTS presidente_sessao (
+    id_presidente SERIAL PRIMARY KEY,
+    nome_presidente VARCHAR(150) NOT NULL,
+    usuario VARCHAR(50) UNIQUE NOT NULL,
+    senha VARCHAR(255) NOT NULL,
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 
 -- 1. Inserindo Cargos
 INSERT INTO cargo (id_cargo, num_digitos, nome_cargo) VALUES 
@@ -209,4 +218,13 @@ INSERT INTO voto (hash, id_cargo, id_urna) VALUES
 
 ALTER TABLE voto ADD COLUMN id_candidato INT NULL;
 ALTER TABLE voto ADD COLUMN tipo_voto VARCHAR(10) DEFAULT 'VALIDO';
+ALTER TABLE voto ADD CONSTRAINT fk_voto_candidato FOREIGN KEY (id_candidato) REFERENCES candidato(id_candidato);
+
+-- Adicionar coluna de status para rastrear se a urna está aberta ou encerrada
+ALTER TABLE urna_eleicao ADD COLUMN status VARCHAR(20) DEFAULT 'ABERTA' CHECK (status IN ('ABERTA', 'ENCERRADA'));
+
+-- Inserindo Presidentes de Sessão
+INSERT INTO presidente_sessao (nome_presidente, usuario, senha) VALUES 
+('Beatriz Mendes', 'beatriz', 'poder2026'),
+('Camila Santos', 'camila', 'votacao123');
 ALTER TABLE voto ADD CONSTRAINT fk_voto_candidato FOREIGN KEY (id_candidato) REFERENCES candidato(id_candidato);    
