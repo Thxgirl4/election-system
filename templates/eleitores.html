@@ -8,6 +8,36 @@
       href="{{ url_for('static', filename='css/style.css') }}"
     />
   </head>
+    <style>
+    body {
+        background-color: #e0e0e0;
+        font-family: 'Helvetica', Arial, sans-serif;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+    body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    
+    /* Configuração da imagem */
+    background-image: url('/static/fundo.png'); 
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    
+    /* Ajuste aqui a transparência (0.1 a 0.9) */
+    opacity: 0.4; 
+    
+    z-index: -1; /* Garante que a imagem fique atrás de tudo */
+} 
+  </style>
   <body>
     <div class="container">
       <h2>Importar Eleitores</h2>
