@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS comparecimento (
     CONSTRAINT fk_comparecimento_eleicao FOREIGN KEY (anomes) REFERENCES eleicao(anomes)
 );
 
+# criar presidente de sessão
 CREATE TABLE IF NOT EXISTS presidente_sessao (
     id_presidente SERIAL PRIMARY KEY,
     nome_presidente VARCHAR(150) NOT NULL,
@@ -226,3 +227,4 @@ ALTER TABLE urna_eleicao ADD COLUMN status VARCHAR(20) DEFAULT 'ABERTA' CHECK (s
 INSERT INTO presidente_sessao (nome_presidente, usuario, senha) VALUES 
 ('Beatriz Mendes', 'beatriz', 'poder2026'),
 ('Camila Santos', 'camila', 'votacao123');
+ALTER TABLE voto ADD CONSTRAINT fk_voto_candidato FOREIGN KEY (id_candidato) REFERENCES candidato(id_candidato);    
