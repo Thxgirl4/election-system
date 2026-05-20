@@ -29,11 +29,14 @@ CREATE TABLE IF NOT EXISTS urna (
     data_comparecimento DATE
 );
 
+
 CREATE TABLE IF NOT EXISTS candidato (
     id_candidato SERIAL PRIMARY KEY,
     nome_candidato VARCHAR(150) NOT NULL,
     id_partido INT NOT NULL,
     id_cargo INT NOT NULL,
+    numero_urna INT,
+    foto_url VARCHAR(255),
     CONSTRAINT fk_candidato_partido FOREIGN KEY (id_partido) REFERENCES partido(num_partido),
     CONSTRAINT fk_candidato_cargo FOREIGN KEY (id_cargo) REFERENCES cargo(id_cargo)
 );

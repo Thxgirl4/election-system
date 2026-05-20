@@ -2,13 +2,43 @@
     let tituloEleitorSessao = "";
     let urnaBloqueada = true;
 
-    const etapas = [
-      { titulo: 'Presidente', digitos: 2 },
-      { titulo: 'Governador', digitos: 2 }
-    ];
+    let etapas = []; // Array VAZIO inicialmente, será preenchido pelo carregarCargos()
     let etapaAtual = 0; 
     let voto = "";
     let votosSalvos = {};
+
+    // Carregar cargos do servidor ASSIM QUE A PÁGINA ABRIR
+    async function carregarCargos() {
+        try {
+            // Chamar rota GET /cargos_eleicao
+            const response = await fetch('/cargos_eleicao?anomes=202610');
+            const data = await response.json();
+            
+            // Validar resposta
+            if (!data.cargos || data.cargos.length === 0) {
+                console.error("Nenhum cargo encontrado!");
+                document.getElementById('tela-bloqueio').innerHTML = 
+                    "ERRO: Nenhum cargo disponível para votação";
+                return;
+            }
+            
+            // Preencher o array etapas com dados do servidor
+            etapas = data.cargos.map(cargo => ({
+                titulo: cargo.titulo,
+                digitos: cargo.digitos
+            }));
+            
+            console.log("Cargos carregados:", etapas);
+            
+        } catch (error) {
+            console.error("Erro ao carregar cargos:", error);
+            document.getElementById('tela-bloqueio').innerHTML = 
+                "ERRO ao carregar cargos da eleição";
+        }
+    }
+
+    // Chamar ao abrir a página
+    document.addEventListener('DOMContentLoaded', carregarCargos);
 
     // ====== Func PDFs
     function gerarZeroesima() {

@@ -530,8 +530,8 @@ def votar():
                 tipo_voto = "BRANCO"
             else:
                 candidato_db = connection.execute(
-                    text("SELECT id_candidato FROM candidato WHERE id_partido = :num AND id_cargo = :id_cargo"),
-                    {"num": numero_digitado, "id_cargo": id_cargo}
+                    text("SELECT id_candidato FROM candidato WHERE numero_urna = :num AND id_cargo = :id_cargo"),
+                    {"num": int(numero_digitado), "id_cargo": id_cargo}
                 ).fetchone()
 
                 if candidato_db:
@@ -607,6 +607,42 @@ def votacao():
             connection.commit()
     
     return render_template("votacao.html")
+
+@app.route("/cargos_eleicao", methods=["GET"])
+def cargos_eleicao():
+    """
+    Retorna lista de cargos ATIVOS para uma eleição.
+    Usado pelo template votacao.html para saber quais votos permitir.
+    """
+    anomes = request.args.get("anomes", ELEICAO_ATUAL)
+    
+    try:
+        with engine.connect() as connection:
+            # Buscar cargos ativos nesta eleição
+            query = text("""
+                SELECT c.id_cargo, c.nome_cargo, c.num_digitos
+                FROM cargo c
+                INNER JOIN eleicao_cargo ec ON c.id_cargo = ec.id_cargo
+                WHERE ec.anomes = :anomes
+                ORDER BY c.id_cargo ASC
+            """)
+            
+            cargos_db = connection.execute(query, {"anomes": anomes}).fetchall()
+            
+            # Transformar resultado em lista de dicts
+            cargos = []
+            for cargo in cargos_db:
+                cargos.append({
+                    "id": cargo[0],
+                    "titulo": cargo[1],
+                    "digitos": cargo[2]
+                })
+            
+            return jsonify({"cargos": cargos}), 200
+    
+    except Exception as e:
+        print(f"Erro ao buscar cargos: {e}")
+        return jsonify({"erro": str(e)}), 500
 
 @app.route("/zeroesima", methods=["GET"])
 def zeroesima():
