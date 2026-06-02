@@ -441,49 +441,6 @@ class BoletimPDF:
 def index():
     return render_template("Seleção.html")
 
-@app.route("/eleitor", methods=["GET", "POST"])
-def eleitor():
-    if request.method == "POST":
-        if "file" not in request.files:
-            return "No file uploaded", 400
-
-        file = request.files["file"]
-        if file.filename == "":
-            return "No file selected", 400
-
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            return 'File uploaded successfully', 200
-
-    with engine.connect() as connection:
-        result = connection.execute(text("SELECT * FROM eleitor"))
-        eleitores = result.fetchall()
-    return render_template("eleitores.html", eleitores=eleitores)
-
-@app.route("/candidato", methods=["GET", "POST"])
-def candidato():
-    if request.method == "POST":
-        if "file" not in request.files:
-            return "No file uploaded", 400
-
-        file = request.files["file"]
-        if file.filename == "":
-            return "No file selected", 400
-
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            return 'File uploaded successfully', 200
-
-    with engine.connect() as connection:
-        result = connection.execute(
-            text(
-                "SELECT candidato.id_candidato, candidato.nome_candidato, candidato.id_partido, candidato.id_cargo, cargo.nome_cargo, partido.nome_partido FROM candidato JOIN cargo ON candidato.id_cargo = cargo.id_cargo JOIN partido ON candidato.id_partido = partido.num_partido"
-            )
-        )
-        candidatos = result.fetchall()
-    return render_template("candidatos.html", candidatos=candidatos)
 
 @app.route("/votar", methods=["POST"])
 def votar():
@@ -531,7 +488,7 @@ def votar():
             else:
                 candidato_db = connection.execute(
                     text("SELECT id_candidato FROM candidato WHERE numero_urna = :num AND id_cargo = :id_cargo"),
-                    {"num": int(numero_digitado), "id_cargo": id_cargo}
+                    {"num": numero_digitado, "id_cargo": id_cargo}
                 ).fetchone()
 
                 if candidato_db:
