@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS candidato (
     nome_candidato VARCHAR(150) NOT NULL,
     id_partido INT NOT NULL,
     id_cargo INT NOT NULL,
-    numero_urna INT,
+    numero_urna VARCHAR(10),
     foto_url VARCHAR(255),
     CONSTRAINT fk_candidato_partido FOREIGN KEY (id_partido) REFERENCES partido(num_partido),
     CONSTRAINT fk_candidato_cargo FOREIGN KEY (id_cargo) REFERENCES cargo(id_cargo)
@@ -99,6 +99,109 @@ CREATE TABLE IF NOT EXISTS presidente_sessao (
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+################## inicio refatoração banco de dados ###########################
+-- Contém as zonas eleitorais que existem no município
+CREATE TABLE IF NOT EXISTS zona_eleitoral (
+    id_zona SERIAL PRIMARY KEY,
+    nome_zona VARCHAR(100) NOT NULL,
+    municipio VARCHAR(100),
+    estado VARCHAR(2),
+    UNIQUE(nome_zona, municipio)
+);
+
+-- Cada seção pertence a uma zona
+CREATE TABLE IF NOT EXISTS secao_eleitoral (
+    id_secao SERIAL PRIMARY KEY,
+    numero_secao VARCHAR(10) NOT NULL,
+    id_zona INT NOT NULL,
+    local_votacao VARCHAR(200),
+    CONSTRAINT fk_secao_zona FOREIGN KEY (id_zona) 
+        REFERENCES zona_eleitoral(id_zona)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+    CONSTRAINT uq_secao_zona UNIQUE (numero_secao, id_zona)
+);
+
+-- Criar índice para melhorar performance
+CREATE INDEX IF NOT EXISTS idx_secao_zona ON secao_eleitoral(id_zona);
+
+ALTER TABLE eleitor ADD COLUMN IF NOT EXISTS id_secao INT DEFAULT NULL;
+
+-- Extrai todas as zonas ÚNICAS de eleitor.zona e insere em zona_eleitoral
+-- ON CONFLICT ignora duplicatas
+
+INSERT INTO zona_eleitoral (nome_zona, municipio, estado)
+SELECT DISTINCT 
+    eleitor.zona AS nome_zona,
+    'Bagé' AS municipio,
+    'RS' AS estado
+FROM eleitor
+WHERE eleitor.zona IS NOT NULL
+ON CONFLICT (nome_zona, municipio) DO NOTHING;
+
+-- Combina zona + sessao dos eleitores para criar seções
+-- Procura a zona_id correspondente
+
+INSERT INTO secao_eleitoral (numero_secao, id_zona, local_votacao)
+SELECT DISTINCT 
+    eleitor.sessao AS numero_secao,
+    zona_eleitoral.id_zona,
+    'Escola Estadual' AS local_votacao
+FROM eleitor
+INNER JOIN zona_eleitoral ON eleitor.zona = zona_eleitoral.nome_zona
+WHERE eleitor.sessao IS NOT NULL
+ON CONFLICT (numero_secao, id_zona) DO NOTHING;
+
+UPDATE eleitor e
+SET id_secao = s.id_secao
+FROM secao_eleitoral s
+INNER JOIN zona_eleitoral z ON s.id_zona = z.id_zona
+WHERE e.zona = z.nome_zona AND e.sessao = s.numero_secao;
+
+-- Validação 3: Amostra dos dados
+SELECT 'Amostra dos dados migrados:' AS info;
+SELECT 
+    e.id_eleitor, 
+    e.nome, 
+    z.nome_zona, 
+    s.numero_secao,
+    s.local_votacao
+FROM eleitor e
+LEFT JOIN secao_eleitoral s ON e.id_secao = s.id_secao
+LEFT JOIN zona_eleitoral z ON s.id_zona = z.id_zona
+LIMIT 10;
+
+-- adiciona a restrição de FK
+ALTER TABLE eleitor
+ADD CONSTRAINT fk_eleitor_secao
+FOREIGN KEY (id_secao) REFERENCES secao_eleitoral(id_secao)
+ON DELETE RESTRICT
+ON UPDATE CASCADE;
+
+-- Adiciona coluna FK em urna
+ALTER TABLE urna ADD COLUMN IF NOT EXISTS id_secao INT DEFAULT NULL;
+
+-- Uma urna pode ser realocada, N:1
+ALTER TABLE urna
+ADD CONSTRAINT fk_urna_secao
+FOREIGN KEY (id_secao) REFERENCES secao_eleitoral(id_secao)
+ON DELETE SET NULL
+ON UPDATE CASCADE;
+
+-- Cada presidente trabalha em uma seção específica
+ALTER TABLE presidente_sessao ADD COLUMN IF NOT EXISTS id_secao INT DEFAULT NULL;
+
+ALTER TABLE presidente_sessao
+ADD CONSTRAINT fk_presidente_secao
+FOREIGN KEY (id_secao) REFERENCES secao_eleitoral(id_secao)
+ON DELETE SET NULL
+ON UPDATE CASCADE;
+
+ALTER TABLE eleitor DROP COLUMN zona;
+ALTER TABLE eleitor DROP COLUMN sessao;
+
+-- segue a ordem e roda a seed.py depois
+################## FIM refatoração banco de dados ###########################
 
 -- 1. Inserindo Cargos
 INSERT INTO cargo (id_cargo, num_digitos, nome_cargo) VALUES 
@@ -210,15 +313,6 @@ INSERT INTO urna_candidato (id_urna, id_candidato) VALUES
 (2, 1),
 (2, 2);
 
--- 10. Inserindo Votos (Com hashes fictícios para simular a criptografia)
--- Lembre-se: o voto é sigiloso, por isso ele não se liga ao Eleitor, apenas à Urna e ao Cargo
-INSERT INTO voto (hash, id_cargo, id_urna) VALUES 
-('a8f5f167f44f4964e6c998dee827110c', 1, 1),
-('b9d2e167f44f4964e6c998dee82711ab', 1, 1),
-('c7x9f167f44f4964e6c998dee8271189', 2, 1),
-('d4f5f167f44f4964e6c998dee82711xx', 1, 2),
-('e1f5f167f44f4964e6c998dee82711zz', 3, 2);
-
 ALTER TABLE voto ADD COLUMN id_candidato INT NULL;
 ALTER TABLE voto ADD COLUMN tipo_voto VARCHAR(10) DEFAULT 'VALIDO';
 ALTER TABLE voto ADD CONSTRAINT fk_voto_candidato FOREIGN KEY (id_candidato) REFERENCES candidato(id_candidato);
@@ -226,8 +320,104 @@ ALTER TABLE voto ADD CONSTRAINT fk_voto_candidato FOREIGN KEY (id_candidato) REF
 -- Adicionar coluna de status para rastrear se a urna está aberta ou encerrada
 ALTER TABLE urna_eleicao ADD COLUMN status VARCHAR(20) DEFAULT 'ABERTA' CHECK (status IN ('ABERTA', 'ENCERRADA'));
 
--- Inserindo Presidentes de Sessão
-INSERT INTO presidente_sessao (nome_presidente, usuario, senha) VALUES 
-('Beatriz Mendes', 'beatriz', 'poder2026'),
-('Camila Santos', 'camila', 'votacao123');
+
 ALTER TABLE voto ADD CONSTRAINT fk_voto_candidato FOREIGN KEY (id_candidato) REFERENCES candidato(id_candidato);    
+ALTER TABLE candidato ALTER COLUMN numero_urna TYPE VARCHAR(10);
+
+-- 1. Criar índice único para garantir integridade e performance
+CREATE UNIQUE INDEX IF NOT EXISTS idx_candidato_numero_urna ON candidato(numero_urna);
+
+-- Limpa todos os números de urna para garantir que não haja conflitos
+UPDATE candidato SET numero_urna = NULL;
+
+-- 2. Atualiza usando um cálculo que garante unicidade absoluta baseada no ID único
+-- Combinamos o id_partido + id_cargo + id_candidato para garantir que NUNCA haja repetição
+UPDATE candidato c
+SET numero_urna = sub.novo_id
+FROM (
+    SELECT 
+        id_candidato,
+        (id_partido * 100000 + id_cargo * 1000 + id_candidato)::TEXT AS novo_id
+    FROM candidato
+) AS sub
+WHERE c.id_candidato = sub.id_candidato;
+
+-- 3. Criar a função que define a regra de negócio do número
+CREATE OR REPLACE FUNCTION gerar_numero_urna()
+RETURNS TRIGGER AS $$
+DECLARE
+    contador INT;
+BEGIN
+    -- Conta quantos candidatos existem no mesmo partido e mesmo cargo
+    SELECT COUNT(*) INTO contador
+    FROM candidato 
+    WHERE id_partido = NEW.id_partido AND id_cargo = NEW.id_cargo;
+
+    -- Aplica as regras de convenção
+    IF NEW.id_cargo IN (1, 2) THEN
+        -- Presidente/Governador: Apenas o número do partido
+        NEW.numero_urna := NEW.id_partido::TEXT;
+        
+    ELSIF NEW.id_cargo = 3 THEN
+        -- Senador: Partido + 1 dígito (Ex: 130)
+        NEW.numero_urna := (NEW.id_partido * 10 + contador)::TEXT;
+        
+    ELSIF NEW.id_cargo = 4 THEN
+        -- Dep. Federal: Partido + 2 dígitos (Ex: 1300)
+        NEW.numero_urna := (NEW.id_partido * 100 + contador)::TEXT;
+        
+    ELSIF NEW.id_cargo = 5 THEN
+        -- Dep. Estadual: Partido + 3 dígitos (Ex: 13000)
+        NEW.numero_urna := (NEW.id_partido * 1000 + contador)::TEXT;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 4. Criar o gatilho (Trigger) que roda automaticamente antes de inserir novo candidato
+DROP TRIGGER IF EXISTS trg_gerar_numero_urna ON candidato;
+
+CREATE TRIGGER trg_gerar_numero_urna
+BEFORE INSERT ON candidato
+FOR EACH ROW
+WHEN (NEW.numero_urna IS NULL)
+EXECUTE FUNCTION gerar_numero_urna();
+
+-- 5. Povoar a coluna para os candidatos que já existem na tabela
+UPDATE candidato c
+SET numero_urna = (
+    SELECT 
+        CASE 
+            WHEN sub.id_cargo IN (1, 2) THEN sub.id_partido::TEXT
+            WHEN sub.id_cargo = 3 THEN (sub.id_partido * 100 + (ROW_NUMBER() OVER(PARTITION BY sub.id_partido, sub.id_cargo ORDER BY sub.id_candidato) - 1))::TEXT
+            WHEN sub.id_cargo = 4 THEN (sub.id_partido * 1000 + (ROW_NUMBER() OVER(PARTITION BY sub.id_partido, sub.id_cargo ORDER BY sub.id_candidato) - 1))::TEXT
+            WHEN sub.id_cargo = 5 THEN (sub.id_partido * 10000 + (ROW_NUMBER() OVER(PARTITION BY sub.id_partido, sub.id_cargo ORDER BY sub.id_candidato) - 1))::TEXT
+        END
+    FROM candidato sub WHERE sub.id_candidato = c.id_candidato
+)
+WHERE numero_urna IS NULL;
+
+
+--Testando
+SELECT 
+    c.id_candidato,
+    c.nome_candidato,
+    c.numero_urna,
+    p.sigla AS partido,
+    car.nome_cargo AS cargo
+FROM candidato c
+JOIN partido p ON c.id_partido = p.num_partido
+JOIN cargo car ON c.id_cargo = car.id_cargo
+ORDER BY car.id_cargo, p.sigla;
+
+SELECT setval(pg_get_serial_sequence('candidato', 'id_candidato'), COALESCE(MAX(id_candidato), 1)) 
+FROM candidato;
+
+-- Não informe o id_candidato, o banco cria o próximo número.
+-- Não informe o numero_urna, a Trigger cria o número.
+INSERT INTO candidato (nome_candidato, id_partido, id_cargo) 
+VALUES ('Candidato de Teste Final', 13, 4);
+
+-- Verifique se ele apareceu com um número de urna único
+SELECT * FROM candidato WHERE nome_candidato = 'Candidato de Teste Final';
