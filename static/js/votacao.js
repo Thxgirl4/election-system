@@ -1,4 +1,9 @@
     const socket = io();
+    // Sons
+    const audioButtons = new Audio('/static/sounds/botoes.mpeg');
+    audioButtons.preload = 'auto';
+    const audioSomUrna = new Audio('/static/sounds/somUrna.mpeg');
+    audioSomUrna.preload = 'auto';
     let tituloEleitorSessao = "";
     let urnaBloqueada = true;
 
@@ -122,6 +127,8 @@
 
    function inserir(n) { 
       if(urnaBloqueada) return;
+    // som de botão
+    try { audioButtons.currentTime = 0; audioButtons.play(); } catch(e) { /* autoplay bloqueado */ }
 
       let etapa = etapas[etapaAtual];
       if(voto.length < etapa.digitos) { 
@@ -173,6 +180,7 @@
 
     function corrigir() { 
       if(urnaBloqueada) return;
+      try { audioButtons.currentTime = 0; audioButtons.play(); } catch(e) {}
       voto = ""; 
       document.getElementById('nome-candidato').innerHTML = ""; 
       document.getElementById('rodape-instrucoes').style.display = 'none';
@@ -195,6 +203,7 @@
 
     function votarBranco() { 
       if(urnaBloqueada) return;
+      try { audioButtons.currentTime = 0; audioButtons.play(); } catch(e) {}
       voto = "BRANCO"; 
       document.getElementById('display-numeros').innerHTML = `<div style="font-size: 32px; font-weight: bold; margin-top: 10px; animation: piscar 1s infinite;">VOTO EM BRANCO</div>`;
       document.getElementById('nome-candidato').innerHTML = "";
@@ -204,6 +213,7 @@
 
     function confirmar() { 
       if(urnaBloqueada) return;
+      try { audioButtons.currentTime = 0; audioButtons.play(); } catch(e) {}
 
       let etapa = etapas[etapaAtual];
       if (voto.length === etapa.digitos || voto === "BRANCO") {
@@ -219,6 +229,8 @@
     }
 
    function finalizarVotacao() {
+    // tocar som de fim de votação
+    try { audioSomUrna.currentTime = 0; audioSomUrna.play(); } catch(e) {}
       urnaBloqueada = true;
       document.getElementById('rodape-instrucoes').style.display = 'none';
       document.getElementById('foto-candidato-container').style.display = 'none';
