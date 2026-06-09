@@ -439,7 +439,7 @@ class BoletimPDF:
 
 @app.route("/")
 def index():
-    return render_template("Seleção.html")
+    return render_template("selecao.html")
 
 
 @app.route("/votar", methods=["POST"])
