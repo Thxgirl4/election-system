@@ -1,0 +1,13 @@
+--> Erro no banco de dados após trocar numero_urna de INT para VARCHAR
+
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedFunction) operator does not exist: character varying = integer
+LINE 1: ...ECT id_candidato FROM candidato WHERE numero_urna = 10 AND i...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+[SQL: SELECT id_candidato FROM candidato WHERE numero_urna = %(num)s AND id_cargo = %(id_cargo)s]
+[parameters: {'num': 10, 'id_cargo': 1}]
+
+ANTES --> {"num": int(numero_digitado), "id_cargo": id_cargo}
+DEPOIS --> {"num": numero_digitado, "id_cargo": id_cargo}
+
