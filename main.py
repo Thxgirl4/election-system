@@ -729,18 +729,25 @@ def handle_liberar(data):
     id_urna_atual = 1
     
     with engine.begin() as connection:
-        # Verificar se a urna foi encerrada pelo presidente
-        urna_status = connection.execute(
-            text("SELECT status FROM urna_eleicao WHERE id_urna = :id_urna AND anomes = :anomes"),
+        # status e a seção da urna atual
+        urna_info = connection.execute(
+            text("""
+                SELECT ue.status, u.id_secao 
+                FROM urna_eleicao ue
+                JOIN urna u ON ue.id_urna = u.id_urna
+                WHERE ue.id_urna = :id_urna AND ue.anomes = :anomes
+            """),
             {"id_urna": id_urna_atual, "anomes": ELEICAO_ATUAL}
         ).fetchone()
         
-        if urna_status and urna_status[0] == 'ENCERRADA':
+        if urna_info and urna_info[0] == 'ENCERRADA':
             emit('status_mesario', {'status': 'A votação foi encerrada pelo presidente de sessão. Não é possível liberar mais urnas!', 'cor': 'red'})
             return
         
+        id_secao_urna = urna_info[1] if urna_info else None
+
         query = text("""
-            SELECT e.id_eleitor, e.nome, 
+            SELECT e.id_eleitor, e.nome, e.id_secao,
             (SELECT 1 FROM comparecimento c WHERE c.id_eleitor = e.id_eleitor AND c.anomes = :anomes) as ja_votou
             FROM eleitor e WHERE e.titulo = :titulo
         """)
@@ -748,8 +755,13 @@ def handle_liberar(data):
         result = connection.execute(query, {"titulo": titulo, "anomes": ELEICAO_ATUAL}).fetchone()
 
         if result:
-            id_eleitor, nome_eleitor, ja_votou = result
+            id_eleitor, nome_eleitor, id_secao_eleitor, ja_votou = result
             
+            # validação se o eleitor pertence à mesma seção da urna
+            if id_secao_urna is not None and id_secao_eleitor != id_secao_urna:
+                emit('status_mesario', {'status': 'Eleitor não pertence a esta seção eleitoral!', 'cor': 'red'})
+                return
+
             if ja_votou:
                 emit('status_mesario', {'status': f'ALERTA: {nome_eleitor} já votou ou está votando!', 'cor': 'red'})
             else:
@@ -768,7 +780,7 @@ def handle_bloquear():
     id_urna_atual = 1
     
     with engine.connect() as connection:
-        # Verificar se a urna foi encerrada pelo presidente
+        # se urna foi encerrada pelo presid.
         urna_status = connection.execute(
             text("SELECT status FROM urna_eleicao WHERE id_urna = :id_urna AND anomes = :anomes"),
             {"id_urna": id_urna_atual, "anomes": ELEICAO_ATUAL}
@@ -824,7 +836,7 @@ def encerrar_sessao():
     id_urna_atual = 1
     
     with engine.begin() as connection:
-        # Verificar se a urna já está encerrada
+        # verificar se a urna já está encerrada
         urna_status = connection.execute(
             text("SELECT status FROM urna_eleicao WHERE id_urna = :id_urna AND anomes = :anomes"),
             {"id_urna": id_urna_atual, "anomes": ELEICAO_ATUAL}
@@ -833,7 +845,7 @@ def encerrar_sessao():
         if urna_status and urna_status[0] == 'ENCERRADA':
             return jsonify({"erro": "A urna já foi encerrada anteriormente."}), 400
         
-        # Marcar a urna como ENCERRADA
+        # marca urna como ENCERRADA
         connection.execute(
             text("""
                 UPDATE urna_eleicao 
@@ -843,7 +855,7 @@ def encerrar_sessao():
             {"id_urna": id_urna_atual, "anomes": ELEICAO_ATUAL}
         )
     
-    # Notificar todos os clientes em tempo real via SocketIO
+    # notificar todos os clientes em tempo real via SocketIO
     socketio.emit('urna_encerrada', {
         'mensagem': 'A votação foi encerrada pelo presidente de sessão!',
         'urna_status': 'ENCERRADA',
