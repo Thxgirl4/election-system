@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Simular Zonas - Sistema Eleitoral</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/selecao.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+
+<body>
+    <div class="container">
+        <h2>Simular Resultados por Zonas</h2>
+        <p>Gera um PDF com resultados simulados agregados por zona eleitoral.</p>
+
+        <form id="simForm" method="post" action="/simular_zonas/pdf" target="_blank">
+            <p>Clique no botão abaixo para gerar o relatório com os resultados de cada urna e as totalizações gerais.</p>
+            
+            <div style="margin-top: 12px; display:flex; gap:10px;">
+                <button id="gerarBtn" type="submit" class="btn-enviar" style="background-color: #007bff; color: #fff;">Gerar Relatório PDF</button>
+                <button type="button" class="btn-enviar" style="background-color:#6c757d; color:#fff;" onclick="location.href='/'">Voltar</button>
+            </div>
+        </form>
+
+    </div>
+</body>
+
+</html>
+<script>
+// Verifica status da votação e desabilita botão se ainda houver urnas abertas
+async function checkStatus() {
+    try {
+        const res = await fetch('/status_votacao');
+        const data = await res.json();
+        const gerarBtn = document.getElementById('gerarBtn');
+        const info = document.getElementById('infoStatus');
+
+        if(!info) {
+            const p = document.createElement('p');
+            p.id = 'infoStatus';
+            document.querySelector('.container').insertBefore(p, document.querySelector('.container').children[2]);
+        }
+
+        const infoEl = document.getElementById('infoStatus');
+
+        if (data.all_closed) {
+            gerarBtn.disabled = false;
+            gerarBtn.style.opacity = 1;
+            infoEl.textContent = 'Todas as urnas encerradas. Você pode gerar os resultados por zona.';
+            infoEl.style.color = 'green';
+        } else {
+            gerarBtn.disabled = true;
+            gerarBtn.style.opacity = 0.6;
+            infoEl.textContent = `Aguardando encerramento de urnas: ${data.open_count} ainda abertas.`;
+            infoEl.style.color = 'red';
+        }
+    } catch (e) {
+        console.error('Erro ao verificar status:', e);
+    }
+}
+
+// Checa status ao carregar e a cada 10s
+checkStatus();
+setInterval(checkStatus, 10000);
+</script>

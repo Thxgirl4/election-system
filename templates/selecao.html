@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Início - Sistema Eleitoral</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/selecao.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h2>Operação da Eleição</h2>
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            <button class="btn-enviar" style="background-color: #ffc107; color: #000; border: 1px solid #d39e00;"
+                onclick="ir('/mesario')">
+                1. Abrir Terminal do Mesário
+            </button>
+
+            <button class="btn-votar" style="margin-top: 0;" onclick="ir('/votacao')">
+                2. Abrir Urna Eletrônica
+            </button>
+
+            <button class="btn-enviar" style="background-color: #dc3545; color: #fff; border: 1px solid #c82333;"
+                onclick="abrirModalEncerramento()">
+                3. Encerrar Sessão
+            </button>
+
+            <button class="btn-enviar" style="background-color: #28a745; color: #fff; border: 1px solid #218838;"
+                onclick="ir('/simular_zonas')">
+                4. Simular Resultados por Zonas (PDF)
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal de Encerramento -->
+    <div id="modalEncerramento" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                Encerrar Sessão Eleitoral
+            </div>
+            <div class="modal-body">
+                <div id="mensagemModal" class="modal-message" style="display: none;"></div>
+                <input type="text" id="usuarioInput" class="modal-input" placeholder="Usuário do Presidente" />
+                <input type="password" id="senhaInput" class="modal-input" placeholder="Senha" />
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn modal-btn-secondary" onclick="fecharModalEncerramento()">Cancelar</button>
+                <button class="modal-btn modal-btn-primary" onclick="validarEEncerrar()">Encerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src='static/js/selecao.js'></script>
+
+</body>
+
+</html>
