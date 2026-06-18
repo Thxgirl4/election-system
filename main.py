@@ -918,8 +918,6 @@ def simular_zonas_pdf():
         traceback.print_exc()
         return jsonify({"erro": f"Erro ao gerar PDF: {str(e)}"}), 500
 
-        return jsonify({"erro": f"Erro ao gerar PDF: {str(e)}"}), 500
-
 
 
 @app.route("/mesario")

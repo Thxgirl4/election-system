@@ -158,7 +158,7 @@ with engine.begin() as conn:
     
     for numero_secao, id_secao in secoes_map.items():
         # Sorteia entre 30 e 80 eleitores para cada seção
-        qtd_eleitores = random.randint(30, 80) 
+        qtd_eleitores = random.randint(30, 100) 
         
         for _ in range(qtd_eleitores):
             nome_eleitor = f"{random.choice(NOMES)} {random.choice(SOBRENOMES)}"
