@@ -26,42 +26,15 @@ PARTIDOS = [
     (55, 'Partido Social Democrático', 'PSD'), (44, 'União Brasil', 'UNIÃO')
 ]
 
-ELEITORES = [
-    # Distribuindo os 20 eleitores em seções diferentes
-    (1, 'Ana Silva', '419283746501', 1),
-    (2, 'Bruno Santos', '592837461029', 15),
-    (3, 'Carlos Oliveira', '837465019283', 30),
-    (4, 'Daniela Souza', '102938475610', 45),
-    (5, 'Eduardo Costa', '564738291039', 60),
-    (6, 'Fernanda Pereira', '918273645012', 75),
-    (7, 'Gabriel Alves', '746583920184', 90),
-    (8, 'Helena Ribeiro', '293847561029', 105),
-    (9, 'Igor Carvalho', '847561029384', 120),
-    (10, 'Julia Lopes', '102938475621', 135),
-    (11, 'Mariana Costa', '321654987012', 150),
-    (12, 'Pedro Almeida', '654987321098', 165),
-    (13, 'Lucas Rodrigues', '987321654032', 180),
-    (14, 'Amanda Ferreira', '147258369014', 240),
-    (15, 'Rafael Gomes', '258369147025', 240),
-    (16, 'Beatriz Martins', '369147258036', 240),
-    (17, 'Thiago Rocha', '753951852075', 240),
-    (18, 'Carolina Mendes', '951753852095', 240),
-    (19, 'Gustavo Lima', '852963741085', 296),
-    (20, 'Juliana Castro', '159357258015', 296)
-]
-
 ELEICOES = [('202610', 1, 2026), ('202410', 1, 2024)]
 URNAS = [
-    (1, '2026-10-04', 240),  # Urna 1 → Seção 240
-    (2, '2026-10-04', 296),  # Urna 2 → Seção 296
-    (3, '2024-10-06', 8),  # Urna 3 → Seção 1
+    (1, '2026-10-04', 240),  # Urna 1 → Seção 240 (apenas uma urna para testes)
 ]
-URNA_ELEICAO = [(1, '202610'), (2, '202610'), (3, '202410')]
+URNA_ELEICAO = [(1, '202610')]
 ELEICAO_CARGO = [('202610', 1), ('202610', 2), ('202610', 3), ('202610', 4), ('202610', 5)]
 
 PRESIDENTES = [
-    ('Beatriz Mendes', 'beatriz', 'poder2026', 23),  # Seção 1
-    ('Camila Santos', 'camila', 'votacao123', 29),   # Seção 3
+    ('Beatriz Mendes', 'beatriz', 'poder2026', 240), # Seção 240 (Urna 1) - única sessão de teste
 ]
 
 NOMES = ["Carlos", "Ana", "João", "Maria", "Pedro", "Paula", "Lucas", "Mariana", "Luiz", "Fernanda", "Marcos", "Juliana", "Rafael", "Camila", "Rodrigo", "Amanda"]
@@ -69,12 +42,12 @@ SOBRENOMES = ["Silva", "Santos", "Oliveira", "Souza", "Rodrigues", "Ferreira", "
 
 ZONAS = [
     (1, '07', 'Bagé', 'RS'),      # id_zona=1
-    (2, '142', 'Bagé', 'RS')     # id_zona=2
+    (2, '142', 'Bagé', 'RS')      # id_zona=2
 ]
 
-# SEÇÕES ELEITORAIS - Zona 1 (id_zona = 1)
+# SEÇÕES ELEITORAIS - Zona 1 (id_zona = 1) e Zona 2 (id_zona = 2)
 SECOES = [
-    # ZONA 1 - Seções agrupadas por local de votação
+    # ZONA 1
     (23, 1, 'A.A.B.B.'), (102, 1, 'A.A.B.B.'), (146, 1, 'A.A.B.B.'), (190, 1, 'A.A.B.B.'), (242, 1, 'A.A.B.B.'), (261, 1, 'A.A.B.B.'), (299, 1, 'A.A.B.B.'), (340, 1, 'A.A.B.B.'),
     (184, 1, 'CAPELA SAGRADA FAMILIA'), (228, 1, 'CAPELA SAGRADA FAMILIA'), (292, 1, 'CAPELA SAGRADA FAMILIA'),
     (17, 1, 'CASA DE CULTURA PEDRO WAYNE'), (50, 1, 'CASA DE CULTURA PEDRO WAYNE'), (65, 1, 'CASA DE CULTURA PEDRO WAYNE'), (96, 1, 'CASA DE CULTURA PEDRO WAYNE'), (132, 1, 'CASA DE CULTURA PEDRO WAYNE'), (167, 1, 'CASA DE CULTURA PEDRO WAYNE'), (178, 1, 'CASA DE CULTURA PEDRO WAYNE'), (195, 1, 'CASA DE CULTURA PEDRO WAYNE'), (231, 1, 'CASA DE CULTURA PEDRO WAYNE'),
@@ -95,7 +68,7 @@ SECOES = [
     (15, 1, 'PREFEITURA MUNICIPAL'), (40, 1, 'PREFEITURA MUNICIPAL'), (59, 1, 'PREFEITURA MUNICIPAL'), (71, 1, 'PREFEITURA MUNICIPAL'), (119, 1, 'PREFEITURA MUNICIPAL'), (155, 1, 'PREFEITURA MUNICIPAL'),
     (5, 1, 'URCAMP'), (91, 1, 'URCAMP'), (100, 1, 'URCAMP'), (121, 1, 'URCAMP'), (141, 1, 'URCAMP'), (157, 1, 'URCAMP'), (179, 1, 'URCAMP'), (193, 1, 'URCAMP'), (219, 1, 'URCAMP'), (234, 1, 'URCAMP'), (256, 1, 'URCAMP'),
     
-    # ZONA 2 - Seções agrupadas por local de votação
+    # ZONA 2
     (56, 2, 'CAMPUS RURAL DA URCAMP'),
     (7, 2, 'CENTRO ADMINISTRATIVO'), (41, 2, 'CENTRO ADMINISTRATIVO'), (89, 2, 'CENTRO ADMINISTRATIVO'), (109, 2, 'CENTRO ADMINISTRATIVO'), (137, 2, 'CENTRO ADMINISTRATIVO'), (161, 2, 'CENTRO ADMINISTRATIVO'), (187, 2, 'CENTRO ADMINISTRATIVO'), (194, 2, 'CENTRO ADMINISTRATIVO'), (240, 2, 'CENTRO ADMINISTRATIVO'), (349, 2, 'CENTRO ADMINISTRATIVO'),
     (4, 2, 'CENTRO SOCIAL URBANO'), (99, 2, 'CENTRO SOCIAL URBANO'), (128, 2, 'CENTRO SOCIAL URBANO'), (169, 2, 'CENTRO SOCIAL URBANO'), (186, 2, 'CENTRO SOCIAL URBANO'), (203, 2, 'CENTRO SOCIAL URBANO'), (238, 2, 'CENTRO SOCIAL URBANO'), (288, 2, 'CENTRO SOCIAL URBANO'),
@@ -174,30 +147,33 @@ with engine.begin() as conn:
 
 with engine.begin() as conn:
     
-    print("Inserindo Eleitores, Eleições e Urnas...")
-    
-    # Mapear numero_secao -> id_secao para usar os IDs corretos
+    # Mapear numero_secao -> id_secao para usar os IDs corretos nas Urnas, Eleitores e Presidentes
     secoes_map = {}
     secoes_db = conn.execute(text("SELECT id_secao, numero_secao FROM secao_eleitoral")).fetchall()
     for sec in secoes_db:
         secoes_map[int(sec[1])] = sec[0]  # numero_secao (int) -> id_secao
     
-    # Atualizar ELEITORES com os id_secao corretos
-    for e in ELEITORES:
-        numero_secao_original = e[3]  # Este era id_secao antes
-        # Mapear para seção real baseado na distribuição pretendida
-        # numero_secao_original de 1 a 287 precisa ser convertido para os id_secao disponíveis
-        if numero_secao_original in secoes_map:
-            id_secao_real = secoes_map[numero_secao_original]
-        else:
-            # Se numero_secao não existe exatamente, usar a primeira seção disponível
-            id_secao_real = secoes_map[min(secoes_map.keys())]
-        
-        conn.execute(text("""
-            INSERT INTO eleitor (id_eleitor, nome, titulo, id_secao)
-            VALUES (:id, :nome, :tit, :id_secao)
-        """), {"id": e[0], "nome": e[1], "tit": e[2], "id_secao": id_secao_real})
+    print("Gerando e Inserindo Eleitores dinamicamente...")
+    id_eleitor_seq = 1
     
+    for numero_secao, id_secao in secoes_map.items():
+        # Sorteia entre 30 e 80 eleitores para cada seção
+        qtd_eleitores = random.randint(30, 100) 
+        
+        for _ in range(qtd_eleitores):
+            nome_eleitor = f"{random.choice(NOMES)} {random.choice(SOBRENOMES)}"
+            titulo_fake = str(id_eleitor_seq).zfill(12) 
+            
+            conn.execute(text("""
+                INSERT INTO eleitor (id_eleitor, nome, titulo, id_secao)
+                VALUES (:id, :nome, :tit, :id_secao)
+            """), {"id": id_eleitor_seq, "nome": nome_eleitor, "tit": titulo_fake, "id_secao": id_secao})
+            
+            id_eleitor_seq += 1
+            
+    print(f"  ✓ {id_eleitor_seq - 1} eleitores gerados!")
+    
+    print("Inserindo Eleições, Urnas e Presidentes...")
     for el in ELEICOES:
         conn.execute(text("INSERT INTO eleicao (anomes, eleicao_nro, ano_eleicao) VALUES (:anomes, :nro, :ano)"), {"anomes": el[0], "nro": el[1], "ano": el[2]})
     
@@ -224,22 +200,20 @@ with engine.begin() as conn:
 
     print("Gerando candidatos para todos os 5 cargos e vinculando às Urnas...")
     
-    # Distribuição: 10 candidatos por cargo
     candidatos_por_cargo = {
-        1: 10,  # Presidente - 2 dígitos
-        2: 10,  # Governador - 2 dígitos
-        3: 10,  # Senador - 3 dígitos
-        4: 10,  # Dep. Federal - 4 dígitos
-        5: 10   # Dep. Estadual - 5 dígitos
+        1: 10,  # Presidente
+        2: 10,  # Governador
+        3: 10,  # Senador
+        4: 10,  # Dep. Federal
+        5: 10   # Dep. Estadual
     }
     
-    # Geradores de números apropriados para cada cargo
     numero_geradores = {
-        1: lambda cargoid, idx: 10 + idx,                    # 10-19 (2 dígitos)
-        2: lambda cargoid, idx: 20 + idx,                    # 20-29 (2 dígitos)
-        3: lambda cargoid, idx: 100 + (idx * 10),           # 100, 110, 120... (3 dígitos)
-        4: lambda cargoid, idx: 1000 + (idx * 100),         # 1000, 1100, 1200... (4 dígitos)
-        5: lambda cargoid, idx: 10000 + (idx * 1000)        # 10000, 11000, 12000... (5 dígitos)
+        1: lambda cargoid, idx: 10 + idx,                    # 10-19 
+        2: lambda cargoid, idx: 20 + idx,                    # 20-29 
+        3: lambda cargoid, idx: 100 + (idx * 10),            # 100, 110...
+        4: lambda cargoid, idx: 1000 + (idx * 100),          # 1000, 1100...
+        5: lambda cargoid, idx: 10000 + (idx * 1000)         # 10000, 11000...
     }
     
     candidato_id = 1
@@ -252,10 +226,7 @@ with engine.begin() as conn:
             partido = random.choice(PARTIDOS)
             id_partido = partido[0]
             
-            # Gerar número de urna apropriado para o cargo
             numero_urna = numero_geradores[id_cargo](id_cargo, idx)
-            
-            # Fotos se repetem (apenas 30 arquivos disponíveis)
             numero_foto = ((candidato_id - 1) % 30) + 1
             foto_url = f"img/candidatos/{numero_foto}.jpg"
             
@@ -271,9 +242,8 @@ with engine.begin() as conn:
                 "foto": foto_url
             })
             
-            # Vincula candidatos nas urnas 1 e 2 para testes
-            conn.execute(text("INSERT INTO urna_candidato (id_urna, id_candidato) VALUES (:id_u1, :id_c), (:id_u2, :id_c)"), 
-                        {"id_u1": 1, "id_u2": 2, "id_c": candidato_id})
+            conn.execute(text("INSERT INTO urna_candidato (id_urna, id_candidato) VALUES (:id_u, :id_c)"), 
+                        {"id_u": 1, "id_c": candidato_id})
             
             candidato_id += 1
 
