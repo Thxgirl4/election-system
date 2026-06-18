@@ -421,3 +421,7 @@ VALUES ('Candidato de Teste Final', 13, 4);
 
 -- Verifique se ele apareceu com um número de urna único
 SELECT * FROM candidato WHERE nome_candidato = 'Candidato de Teste Final';
+
+
+ALTER TABLE urna_eleicao 
+ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'ABERTA' CHECK (status IN ('ABERTA', 'ENCERRADA'));
