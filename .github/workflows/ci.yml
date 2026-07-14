@@ -21,7 +21,7 @@ jobs:
           python-version: '3.11'
           cache: pip
       - run: pip install -r requirements.txt
-      - run: bash run.sh
+      - run: python main.py
       
       - name: Build Docker image
         run: docker build -t election_app:latest .
