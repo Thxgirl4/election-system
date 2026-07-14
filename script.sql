@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS presidente_sessao (
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-################## inicio refatoração banco de dados ###########################
+-- ################## inicio refatoração banco de dados ###########################
 -- Contém as zonas eleitorais que existem no município
 CREATE TABLE IF NOT EXISTS zona_eleitoral (
     id_zona SERIAL PRIMARY KEY,
