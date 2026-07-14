@@ -21,9 +21,14 @@ jobs:
           python-version: '3.11'
           cache: pip
       - run: pip install -r requirements.txt
-      - run: python main.py
+
+      - name: Generate Tag
+        id: generate_tag
+        run: | 
+              SHA=$(echo $GITHUB_SHA | head -c7)
+              echo "sha=sSHA" >> $GITHUB_OUTPUT 
       
       - name: Build Docker image
-        run: docker build -t election_app:latest .
+        run: docker build -t election_app:${{ steps.generate_tag.outputs.sha }} .
 
       
