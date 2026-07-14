@@ -20,6 +20,6 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
-        run: python main.py
+      - run: python main.py
 
       
