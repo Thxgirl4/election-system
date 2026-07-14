@@ -26,7 +26,7 @@ jobs:
         id: generate_tag
         run: | 
               SHA=$(echo $GITHUB_SHA | head -c7)
-              echo "sha=sSHA" >> $GITHUB_OUTPUT 
+              echo "sha=$SHA" >> $GITHUB_OUTPUT 
       
       - name: Build Docker image
         run: docker build -t election_app:${{ steps.generate_tag.outputs.sha }} .
