@@ -22,5 +22,8 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - run: bash run.sh
+      
+      - name: Build Docker image
+        run: docker build -t election_app:latest .
 
       
