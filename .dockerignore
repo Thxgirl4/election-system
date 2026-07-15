@@ -1,0 +1,5 @@
+*.txt
+insert_votes.py
+*.sql
+seed.py
+
