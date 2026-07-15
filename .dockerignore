@@ -1,4 +1,6 @@
-*.txt
+erros.txt
+zonas_eleitorais.txt
+backupgeral.txt
 insert_votes.py
 *.sql
 seed.py
