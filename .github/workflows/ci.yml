@@ -33,11 +33,19 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}    
+      
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: anajudev405/election_app:${{ steps.generate_tag.outputs.sha }},anajudev405/election_app:latest
+          
 
-      - name: Build Docker image
-        run: docker build -t anajudev405/election_app:${{ steps.generate_tag.outputs.sha }} .
 
-      - name: Push Docker image
-        run: docker push anajudev405/election_app:${{ steps.generate_tag.outputs.sha }}  
+#      - name: Build Docker image
+#        run: docker build -t anajudev405/election_app:${{ steps.generate_tag.outputs.sha }} .
+
+#      - name: Push Docker image
+#        run: docker push anajudev405/election_app:${{ steps.generate_tag.outputs.sha }}  
 
       
