@@ -1,14 +1,13 @@
+from datetime import datetime
+from io import BytesIO
+import uuid
+import os
 from flask import Flask, request, render_template, jsonify, make_response
 from sqlalchemy import create_engine, text
-import os
 from dotenv import load_dotenv
-import uuid
 from flask_socketio import SocketIO, emit
-from io import BytesIO
-from reportlab.pdfgen import canvas
-from datetime import datetime
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import cm, inch
+from reportlab.lib.units import cm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.platypus import PageBreak
 from utils.utils_functions import gerar_hash_id
@@ -28,11 +27,13 @@ engine = create_engine(
 
 @app.route("/")
 def index():
+    """Página inicial da aplicação."""
     return render_template("selecao.html")
 
 
 @app.route("/votar", methods=["POST"])
 def votar():
+    """Rota para receber os votos do eleitor e registrar no banco de dados."""
     data = request.get_json()
     
     if not data:
@@ -106,6 +107,7 @@ def votar():
 
 @app.route("/buscar_candidato", methods=["GET"])
 def buscar_candidato():
+    """Rota para buscar informações de um candidato pelo número e cargo."""
     numero = request.args.get("numero")
     nome_cargo = request.args.get("cargo")
 
@@ -143,8 +145,9 @@ def buscar_candidato():
 
 @app.route("/votacao", methods=["GET", "POST"])
 def votacao():
+    """Rota para exibir a página de votação e reiniciar a urna para uma nova eleição."""
     if request.method == "GET":
-        id_urna_atual = 1 
+        id_urna_atual =1
         
         with engine.connect() as connection:
             connection.execute(text("DELETE FROM voto WHERE id_urna = :id_urna"), {"id_urna": id_urna_atual})
@@ -509,10 +512,12 @@ def simular_zonas_pdf():
 
 @app.route("/mesario")
 def mesario():
+    """Página para o mesário liberar a urna para o próximo eleitor."""
     return render_template("mesario.html")
 
 @socketio.on('mesario_libera_urna')
 def handle_liberar(data):
+    """Evento para liberar a urna para o próximo eleitor."""
     titulo = data.get('titulo')
     id_urna_atual = 1
     
@@ -565,6 +570,7 @@ def handle_liberar(data):
 
 @socketio.on('urna_bloqueada')
 def handle_bloquear():
+    """Evento para bloquear a urna após o eleitor concluir a votação."""
     id_urna_atual = 1
     
     with engine.connect() as connection:
